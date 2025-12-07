@@ -23,6 +23,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: vault-unseal-bun
+                name: vault-unseal-bun-service
                 port:
                   number: 3000
