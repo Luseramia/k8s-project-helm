@@ -29,7 +29,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
       - name: vault-unseal-bun
-        image: registry.registry.svc.cluster.local:5000/vault-unseal-bun:0
+        image: registry.registry.svc.cluster.local:5000/vault-unseal-bun:3
         imagePullPolicy: Always
         resources:
           requests:
