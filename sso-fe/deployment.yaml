@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sso-fe
+  namespace: infra
+  labels:
+    app: sso-fe
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate  # เปลี่ยนจาก Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sso-fe
+  template:
+    metadata:
+      labels:
+        app: sso-fe
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"
+    spec:
+      serviceAccountName: sso-fe
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: sso-fe
+          image: registry.registry.svc.cluster.local:5000/sso-fe:0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: ssl-certs
+          secret:
+            secretName: sso-fe-secrets
+            items:
+              - key: privatekey
+                path: private.key
+                mode: 0600
+              - key: certificate
+                path: certificate.crt
+                mode: 0644
+      restartPolicy: Always

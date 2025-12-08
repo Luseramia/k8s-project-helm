@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: sso-fe-config
+  namespace: bun-sso
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: sso-fe-ingress-tls
+      hosts:
+        - sso.tarchunk.win
+  rules:
+    - host: sso.tarchunk.win        # ✅ ต้องเป็น 'host' ไม่ใช่ 'hosts'
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sso-fe
+                port:
+                  number: 443
