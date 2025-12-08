@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sso-bun
+  namespace: infra
+  labels:
+    app: sso-bun
+spec:
+  replicas: 2  
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate  
+  selector:
+    matchLabels:
+      app: sso-bun
+  template:
+    metadata:
+      labels:
+        app: sso-bun
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"  # ปิด Consul injection
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-token: "true"
+        # vault.hashicorp.com/agent-pre-populate-only: "true" # comment เพื่อเอา sidecar
+        vault.hashicorp.com/agent-inject-token-volume: "/vault"
+        vault.hashicorp.com/role: "backend-rpubkey"
+    spec:
+      serviceAccountName: sso-bun
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: sso-bun
+        image: registry.registry.svc.cluster.local:5000/sso-bun:17
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      restartPolicy: Always
