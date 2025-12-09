@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: sso-fe
-          image: registry.registry.svc.cluster.local:5000/sso-fe:4
+          image: registry.registry.svc.cluster.local:5000/sso-fe:5
           imagePullPolicy: Always
           ports:
             - containerPort: 80
