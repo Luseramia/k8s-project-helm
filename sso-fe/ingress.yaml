@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata: 
-  name: sso-fe-config
-  namespace: bun-sso
+  name: sso-fe-ingress
+  namespace: infra
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # เปลี่ยนเป็น HTTPS
