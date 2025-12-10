@@ -11,4 +11,4 @@ spec:
     port: 443
     targetPort: 443 
     protocol: TCP
-  type: LoadBalancer
+  type: ClusterIP
