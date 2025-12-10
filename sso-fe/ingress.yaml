@@ -8,13 +8,15 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # เปลี่ยนเป็น HTTPS
     nginx.ingress.kubernetes.io/backend-https-verify: "false"  # ปิด verify เพราะ self-signed
     # ปิด cert-manager ไม่ให้แทรกแซง
-    cert-manager.io/issuer: ""
-    cert-manager.io/cluster-issuer: ""
+    # cert-manager.io/issuer: ""
+    # cert-manager.io/cluster-issuer: ""
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
 
 spec:
   ingressClassName: nginx
   tls:
-    - secretName: sso-fe-ingress-tls
+    - secretName: sso-frontend-ingress-tls
       hosts:
         - sso.tarchunk.win
   rules:
