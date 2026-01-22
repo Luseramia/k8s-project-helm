@@ -29,7 +29,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
       - name: sso-bun
-        image: registry.registry.svc.cluster.local:5000/sso-bun:18
+        image: registry.registry.svc.cluster.local:5000/sso-bun:20
         imagePullPolicy: Always
         resources:
           requests:
