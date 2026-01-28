@@ -4,4 +4,4 @@ metadata:
   name: sso-bun-config
   namespace: infra
 data:
-  N8N_PRODUCTION_API: "https://n8n.tarchunk.win/webhook/upload-to-discord"
+  N8N_PRODUCTION_API: "http://n8n.n8n.svc.cluster.local:443/webhook/upload-to-discord"
