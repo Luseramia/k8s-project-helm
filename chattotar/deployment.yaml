@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-to-tar
+  namespace: infra
+  labels:
+    app: chat-to-tar
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate  # เปลี่ยนจาก Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: chat-to-tar
+  template:
+    metadata:
+      labels:
+        app: chat-to-tar
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"
+    spec:
+      serviceAccountName: chat-to-tar
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: chat-to-tar
+          image: registry.registry.svc.cluster.local:5000/chat-to-tar:1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: ssl-certs
+          secret:
+            secretName: chat-to-tar-secrets
+            items:
+              - key: privatekey
+                path: private.key
+                mode: 0600
+              - key: certificate
+                path: certificate.crt
+                mode: 0644
+      restartPolicy: Always

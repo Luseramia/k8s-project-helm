@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-to-tar
+  namespace: infra
+spec:
+  selector:
+    app: chat-to-tar
+  ports:
+  - name: metrics
+    port: 443
+    targetPort: 443 
+    protocol: TCP
+  type: ClusterIP
