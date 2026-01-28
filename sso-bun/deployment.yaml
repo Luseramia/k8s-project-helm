@@ -38,4 +38,7 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "200m"
+        envFrom:
+            - configMapRef:
+                name: sso-bun-config 
       restartPolicy: Always
