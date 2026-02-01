@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: chat-to-tar
-          image: registry.registry.svc.cluster.local:5000/chat-to-tar:4
+          image: registry.registry.svc.cluster.local:5000/chat-to-tar:6
           imagePullPolicy: Always
           ports:
             - containerPort: 80
