@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: x-webapp
+  namespace: infra
+spec:
+  selector:
+    app: x-webapp
+  ports:
+  - name: metrics
+    port: 443
+    targetPort: 443 
+    protocol: TCP
+  type: ClusterIP
