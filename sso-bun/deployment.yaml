@@ -31,6 +31,17 @@ spec:
       - name: sso-bun
         image: registry.registry.svc.cluster.local:5000/sso-bun:42
         imagePullPolicy: Always
+        env:
+        - name: SEAWEED_FS_SA
+          valueFrom:
+            secretKeyRef:
+              name: sso-bun-secrets
+              key: SEAWEED_FS_SA
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sso-bun-secrets
+              key: DB_PASSWORD
         resources:
           requests:
             memory: "256Mi"

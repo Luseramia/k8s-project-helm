@@ -12,6 +12,8 @@ metadata:
     # cert-manager.io/cluster-issuer: ""
     acme.cert-manager.io/http01-ingress-class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 
 spec:
   ingressClassName: nginx
