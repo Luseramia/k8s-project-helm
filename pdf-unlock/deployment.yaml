@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pdf-unlock
+  namespace: infra
+  labels:
+    app: pdf-unlock
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate  # เปลี่ยนจาก Recreate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: pdf-unlock
+  template:
+    metadata:
+      labels:
+        app: pdf-unlock
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"
+    spec:
+      serviceAccountName: pdf-unlock
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: pdf-unlock
+          image: registry.registry.svc.cluster.local:5000/pdf-unlock:7
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/nginx/ssl
+              readOnly: true
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: ssl-certs
+          secret:
+            secretName: pdf-unlock-secrets
+            items:
+              - key: privatekey
+                path: private.key
+                mode: 0600
+              - key: certificate
+                path: certificate.crt
+                mode: 0644
+      restartPolicy: Always
