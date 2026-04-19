@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: pdf-unlock
-          image: registry.registry.svc.cluster.local:5000/pdf-unlock:3
+          image: registry.registry.svc.cluster.local:5000/pdf-unlock:4
           imagePullPolicy: Always
           ports:
             - containerPort: 80
