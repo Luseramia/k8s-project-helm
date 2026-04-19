@@ -20,9 +20,9 @@ spec:
   tls:
     - secretName: pdf-unlock-ingress-tls
       hosts:
-        - chat.tarchunk.win
+        - pdf-unlock.tarchunk.win
   rules:
-    - host: chat.tarchunk.win        # ✅ ต้องเป็น 'host' ไม่ใช่ 'hosts'
+    - host: pdf-unlock.tarchunk.win        # ✅ ต้องเป็น 'host' ไม่ใช่ 'hosts'
       http:
         paths:
           - path: /
