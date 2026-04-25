@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: x-webapp
-          image: registry.registry.svc.cluster.local:5000/x-webapp:9
+          image: registry.registry.svc.cluster.local:5000/x-webapp:11
           imagePullPolicy: Always
           ports:
             - containerPort: 80
