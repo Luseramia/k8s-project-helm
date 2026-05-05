@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hpm
+  namespace: hpm
+spec:
+  selector:
+    app: hpm
+  ports:
+  - name: metrics
+    port: 443
+    targetPort: 443 
+    protocol: TCP
+  type: ClusterIP

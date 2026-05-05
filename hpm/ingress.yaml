@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+  name: hpm-ingress
+  namespace: hpm
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # เปลี่ยนเป็น HTTPS
+    nginx.ingress.kubernetes.io/backend-https-verify: "false"  # ปิด verify เพราะ self-signed
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: hpm-ingress-tls
+      hosts:
+        - hpm.tarchunk.win
+  rules:
+    - host: hpm.tarchunk.win        # ✅ ต้องเป็น 'host' ไม่ใช่ 'hosts'
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: hpm
+                port:
+                  number: 443
