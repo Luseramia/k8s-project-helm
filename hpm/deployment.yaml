@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hpm
-  namespace: infra
+  namespace: hpm
   labels:
     app: hpm
 spec:
