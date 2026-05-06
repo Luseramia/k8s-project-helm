@@ -1,0 +1,6 @@
+apiVersion: v2
+name: swing-detector
+description: Crypto Swing Detector - Binance WebSocket to n8n Webhook
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

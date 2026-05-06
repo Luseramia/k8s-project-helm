@@ -1,0 +1,43 @@
+replicaCount: 1
+
+image:
+  repository: registry.registry.svc.cluster.local:5000/swing-detector
+  tag: "1"
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+namespace: infra
+
+serviceAccount:
+  create: true
+  name: swing-detector
+
+# Python app config (จะกลายเป็น env vars)
+config:
+  n8nWebhookUrl: "http://n8n.n8n.svc.cluster.local:443/webhook/f5e8d84d-a9c8-40c7-b2b8-980cb05442b1"
+  swingThreshold: "10"       # % ขั้นต่ำที่ถือว่า swing
+  windowSec: "300"           # กรอบเวลา (วินาที) ในการวัด swing
+  minVolumeUsdt: "5000000"   # volume ขั้นต่ำ USDT
+  quoteAsset: "USDT"
+  binanceWsUrl: "wss://stream.binance.com:9443/ws/!miniTicker@arr"
+  logLevel: "INFO"
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "50m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+# liveness probe — restart pod ถ้า WebSocket หลุดเกิน threshold
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 60
+  failureThreshold: 3
+
+consul:
+  injectEnabled: false

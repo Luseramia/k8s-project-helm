@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "swing-detector.fullname" . }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  N8N_WEBHOOK_URL: {{ .Values.config.n8nWebhookUrl | quote }}
+  SWING_THRESHOLD: {{ .Values.config.swingThreshold | quote }}
+  WINDOW_SEC: {{ .Values.config.windowSec | quote }}
+  MIN_VOLUME_USDT: {{ .Values.config.minVolumeUsdt | quote }}
+  QUOTE_ASSET: {{ .Values.config.quoteAsset | quote }}
+  BINANCE_WS_URL: {{ .Values.config.binanceWsUrl | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}

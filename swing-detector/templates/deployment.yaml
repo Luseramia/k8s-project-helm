@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "swing-detector.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ include "swing-detector.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: {{ include "swing-detector.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "swing-detector.fullname" . }}
+      annotations:
+        consul.hashicorp.com/connect-inject: {{ .Values.consul.injectEnabled | quote }}
+        # force redeploy เมื่อ configmap เปลี่ยน
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      containers:
+        - name: {{ include "swing-detector.fullname" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "swing-detector.fullname" . }}-config
+          resources:
+            requests:
+              memory: {{ .Values.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+            limits:
+              memory: {{ .Values.resources.limits.memory }}
+              cpu: {{ .Values.resources.limits.cpu }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import os; open('/tmp/healthy').close()"
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
