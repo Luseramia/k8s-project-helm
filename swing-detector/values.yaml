@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: registry.registry.svc.cluster.local:5000/swing-detector
-  tag: "1"
+  tag: 1
   pullPolicy: Always
 
 nameOverride: ""
