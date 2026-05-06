@@ -20,7 +20,7 @@ config:
   swingThreshold: "10"       # % ขั้นต่ำที่ถือว่า swing
   windowSec: "300"           # กรอบเวลา (วินาที) ในการวัด swing
   minVolumeUsdt: "5000000"   # volume ขั้นต่ำ USDT
-   quoteAsset: "USDT"
+  quoteAsset: "USDT"
   binanceWsUrl: "wss://stream.binance.com:9443/ws/!miniTicker@arr"
   logLevel: "INFO"
 
