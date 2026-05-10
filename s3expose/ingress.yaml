@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: seaweedfs-s3
+  annotations:
+    # อนุญาตไฟล์ใหญ่ (default 1MB เล็กไปสำหรับ S3)
+    nginx.ingress.kubernetes.io/proxy-body-size: "5g"
+    
+    # timeout ยาวขึ้นสำหรับ multipart upload
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    
+    # ปิด buffering เพื่อ stream upload/download
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    
+    # cert-manager (ถ้าใช้)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # เปลี่ยนเป็น HTTPS
+    nginx.ingress.kubernetes.io/backend-https-verify: "false"  # ปิด verify เพราะ self-signed
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+    
+    # rate limit ป้องกัน abuse (request/sec ต่อ IP)
+    nginx.ingress.kubernetes.io/limit-rps: "50"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location ~ ^/(status|metrics|admin) {
+        return 403;
+      }
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - s3.tarchunk.win
+      secretName: s3-ingress-tls
+  rules:
+    - host: s3.tarchunk.win
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: seaweedfs-s3
+                port:
+                  number: 8333
