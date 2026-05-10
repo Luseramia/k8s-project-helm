@@ -17,7 +17,7 @@ metadata:
     
     # cert-manager (ถ้าใช้)
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  # เปลี่ยนเป็น HTTPS
+    nginx.ingress.kubernetes.io/backend-protocol: "http" # เปลี่ยนเป็น http เพราะ seaweed เปิดแบบ http
     nginx.ingress.kubernetes.io/backend-https-verify: "false"  # ปิด verify เพราะ self-signed
     acme.cert-manager.io/http01-ingress-class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-dns01"
