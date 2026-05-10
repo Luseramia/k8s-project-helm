@@ -7,5 +7,5 @@ spec:
   ports:
     - name: s3
       port: 8333
-      targetPort: 30303
+      targetPort: 30304
       protocol: TCP
