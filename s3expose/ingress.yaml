@@ -25,10 +25,10 @@ metadata:
     # rate limit ป้องกัน abuse (request/sec ต่อ IP)
     nginx.ingress.kubernetes.io/limit-rps: "50"
     nginx.ingress.kubernetes.io/limit-connections: "20"
-    nginx.ingress.kubernetes.io/server-snippet: |
-      location ~ ^/(status|metrics|admin) {
-        return 403;
-      }
+    # nginx.ingress.kubernetes.io/server-snippet: |
+    #   location ~ ^/(status|metrics|admin) {
+    #     return 403;
+    #   }
 spec:
   ingressClassName: nginx
   tls:
