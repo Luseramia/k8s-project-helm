@@ -45,6 +45,9 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "200m"
+          envFrom:
+            - configMapRef:
+                name: hpm-config
       volumes:
         - name: ssl-certs
           secret:
