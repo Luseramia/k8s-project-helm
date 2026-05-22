@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hpm-config
+  namespace: hpm
+data:
+  API_URL: "https://erp-uat.somjai.app/api"
