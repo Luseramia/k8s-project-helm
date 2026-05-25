@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot
+  namespace: discord-bot
+  labels:
+    app: discord-bot
+spec:
+  replicas: 1  # Discord bot ควรมี replica เดียวเพื่อป้องกัน duplicate messages
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate  # ป้องกัน multiple instances ทำงานพร้อมกัน
+  selector:
+    matchLabels:
+      app: discord-bot
+  template:
+    metadata:
+      labels:
+        app: discord-bot
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"  # ปิด Consul injection
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/agent-inject-token: "true"
+        vault.hashicorp.com/agent-inject-token-volume: "/vault"
+        vault.hashicorp.com/role: "discordbot"
+        vault.hashicorp.com/agent-inject-secret-config: "dev-secrets/data/creds"
+        vault.hashicorp.com/agent-inject-template-config: |
+              {{- with secret "dev-secrets/data/creds" -}}
+              API_TOKEN="{{ .Data.data.API_KEY }}"
+              {{- end }}
+    spec:
+      serviceAccountName: discordbot
+      dnsPolicy: ClusterFirst
+      containers:
+      - name: discord-bot
+        image: registry.registry.svc.cluster.local:5000/discord-bot:127
+        imagePullPolicy: Always
+        env:
+        # จาก Secret
+        - name: DISCORD_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: discord-bot-secrets
+              key: DISCORD_TOKEN
+        - name: TOKEN  # alias สำหรับ DISCORD_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: discord-bot-secrets
+              key: DISCORD_TOKEN
+        # จาก ConfigMap
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: discord-bot-config
+              key: NODE_ENV
+        - name: N8N_TEST_API
+          valueFrom:
+            configMapKeyRef:
+              name: discord-bot-config
+              key: N8N_TEST_API
+        - name: N8N_PRODUCTION_API
+          valueFrom:
+            configMapKeyRef:
+              name: discord-bot-config
+              key: N8N_PRODUCTION_API
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        # Health checks (ถ้า bot ของคุณมี health endpoint)
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 3000
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 30
+        # readinessProbe:
+        #   httpGet:
+        #     path: /ready
+        #     port: 3000
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+      restartPolicy: Always
+      # หรือใช้ imagePullSecrets ถ้าใช้ private registry
+      # imagePullSecrets:
+      # - name: regcred
