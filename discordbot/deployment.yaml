@@ -63,6 +63,11 @@ spec:
             configMapKeyRef:
               name: discord-bot-config
               key: N8N_PRODUCTION_API
+        - name: N8N_JIRA_COMMENTS_API
+          valueFrom:
+            configMapKeyRef:
+              name: discord-bot-config
+              key: N8N_JIRA_COMMENTS_API
         resources:
           requests:
             memory: "128Mi"
