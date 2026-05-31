@@ -1,0 +1,80 @@
+# Tempo values - single binary mode + SeaweedFS S3 backend
+# ติดตั้ง: helm install tempo grafana/tempo -n monitoring -f tempo-values.yaml
+#
+# *** จุดที่ต้องแก้ ***
+# - tempo.storage.trace.s3.endpoint: URL ของ SeaweedFS S3
+# - persistence.storageClassName
+
+# ─────────────────────────────────────────────────────
+# Tempo config
+# ─────────────────────────────────────────────────────
+tempo:
+  # Storage — เก็บ traces ที่ SeaweedFS S3
+  storage:
+    trace:
+      backend: s3
+      s3:
+        bucket: tempo-traces
+        endpoint: seaweedfs-s3.infra.svc.cluster.local:8333    # ← เปลี่ยน (ไม่มี http:// สำหรับ Tempo)
+        insecure: true                          # http
+        forcepathstyle: true                    # สำหรับ SeaweedFS
+        # access key + secret จาก env (ดู extraEnvFrom)
+
+  # Retention
+  retention: 720h    # 30 วัน
+
+  # Receivers — รับ traces จาก OTLP (gRPC + HTTP) + Jaeger + Zipkin
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:14250
+        thrift_http:
+          endpoint: 0.0.0.0:14268
+    zipkin:
+      endpoint: 0.0.0.0:9411
+
+  # Metrics generator — สร้าง RED metrics จาก traces (สำคัญมาก!)
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://kps-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+
+  # Overrides
+  overrides:
+    defaults:
+      metrics_generator:
+        processors: [service-graphs, span-metrics]
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    memory: 1Gi
+
+# Persistence (สำหรับ WAL + local cache)
+persistence:
+  enabled: true
+  storageClassName: truenas-nfs-storage    # ← เปลี่ยน
+  size: 10Gi
+
+# ใช้ S3 credentials จาก secret
+extraEnvFrom:
+  - secretRef:
+      name: tempo-s3-credentials
+
+# ServiceMonitor สำหรับ Prometheus scrape Tempo
+serviceMonitor:
+  enabled: true
+  labels:
+    release: kps
+
+# Replica
+replicas: 1
