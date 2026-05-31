@@ -105,6 +105,14 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
 
+  # NFS (root_squash) ไม่ให้ chown — ปิด init-chown-data แล้วพึ่ง fsGroup แทน
+  initChownData:
+    enabled: false
+  securityContext:
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+
   resources:
     requests:
       cpu: 100m
