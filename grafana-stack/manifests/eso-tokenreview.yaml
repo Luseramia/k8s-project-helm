@@ -1,0 +1,17 @@
+# ให้ ServiceAccount ของ External Secrets Operator มีสิทธิ์เรียก TokenReview
+# จำเป็นสำหรับ Vault Kubernetes auth (token_reviewer_jwt ไม่ได้ตั้ง →
+# Vault ใช้ JWT ของ ESO เองเรียก TokenReview API)
+#
+# pattern เดียวกับ discordbot/cluster-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-secrets-tokenreview
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: external-secrets
+    namespace: external-secrets
