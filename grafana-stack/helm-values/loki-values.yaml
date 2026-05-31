@@ -32,7 +32,7 @@ loki:
       ruler: loki-ruler
       admin: loki-admin
     s3:
-      endpoint: http://seaweedfs.truenas.lan:8333    # ← เปลี่ยน URL จริง
+      endpoint: http://seaweedfs-s3.infra.svc.cluster.local:8333    # ← เปลี่ยน URL จริง
       region: us-east-1                              # SeaweedFS ไม่สน แต่ต้องใส่
       s3ForcePathStyle: true                         # จำเป็นสำหรับ SeaweedFS
       insecure: true                                 # http (ถ้าใช้ https ตั้ง false)

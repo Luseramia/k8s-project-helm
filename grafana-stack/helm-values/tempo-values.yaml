@@ -15,7 +15,7 @@ tempo:
       backend: s3
       s3:
         bucket: tempo-traces
-        endpoint: seaweedfs.truenas.lan:8333    # ← เปลี่ยน (ไม่มี http:// สำหรับ Tempo)
+        endpoint: seaweedfs-s3.infra.svc.cluster.local:8333    # ← เปลี่ยน (ไม่มี http:// สำหรับ Tempo)
         insecure: true                          # http
         forcepathstyle: true                    # สำหรับ SeaweedFS
         # access key + secret จาก env (ดู extraEnvFrom)
