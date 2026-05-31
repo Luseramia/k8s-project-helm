@@ -62,7 +62,7 @@ resources:
 # Persistence (สำหรับ WAL + local cache)
 persistence:
   enabled: true
-  storageClassName: nfs-truenas    # ← เปลี่ยน
+  storageClassName: truenas-nfs-storage    # ← เปลี่ยน
   size: 10Gi
 
 # ใช้ S3 credentials จาก secret
