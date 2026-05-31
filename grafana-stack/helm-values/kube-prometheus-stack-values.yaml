@@ -127,18 +127,27 @@ grafana:
     accessModes: ["ReadWriteOnce"]
     size: 5Gi
 
-  # Ingress ผ่าน nginx ของคุณ
+  # Ingress ผ่าน nginx + cert-manager (สูตรเดียวกับ x-webapp/ingress.yaml)
   ingress:
     enabled: true
     ingressClassName: nginx
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"        # บังคับ http → https
+      cert-manager.io/cluster-issuer: "letsencrypt-dns01"      # ออก cert จริง (DNS01)
     hosts:
-      - grafana.lan    # ← เปลี่ยน
-    # tls:
-    #   - secretName: grafana-tls
-    #     hosts:
-    #       - grafana.yourdomain.com
+      - grafana.tarchunk.win    # ← โดเมนจริง (เปลี่ยนได้ตามต้องการ)
+    tls:
+      - secretName: grafana-ingress-tls
+        hosts:
+          - grafana.tarchunk.win
+
+  # บอก Grafana ว่าตัวเองอยู่หลัง https ไม่งั้นจะ redirect กลับเป็น http
+  grafana.ini:
+    server:
+      domain: grafana.tarchunk.win
+      root_url: "https://grafana.tarchunk.win"
+      enforce_domain: false
 
   # Datasources เพิ่มเติม (Loki + Tempo)
   # Prometheus datasource มากับ chart อยู่แล้ว
