@@ -17,7 +17,7 @@ spec:
     path: grafana-stack/manifests
     directory:
       recurse: false
-      include: '{namespace.yaml,external-secrets.yaml}'
+      include: '{namespace.yaml,external-secrets.yaml,eso-tokenreview.yaml}'
       # ↑ ใช้ external-secrets เพื่อดึง credential จาก Vault
       # ถ้ายังไม่พร้อมใช้ Vault → เปลี่ยนเป็น 'secrets-static.yaml'
       # แต่ไม่แนะนำ เพราะ commit secret ใน git ไม่ปลอดภัย
