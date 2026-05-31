@@ -1,0 +1,58 @@
+# Wave 1: kube-prometheus-stack
+# ติดตั้ง CRDs ก่อนเพราะตัวอื่น (ServiceMonitor) ต้องใช้
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    # Source 1: Helm chart จาก upstream
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 65.3.1    # ← pin version ป้องกัน drift
+      helm:
+        releaseName: kps
+        valueFiles:
+          - $values/grafana-stack/helm-values/kube-prometheus-stack-values.yaml
+
+    # Source 2: values file ใน git repo (multi-source pattern)
+    - repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true        # จำเป็น! CRDs ของ kube-prometheus-stack ใหญ่เกิน annotation limit
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # อย่า diff ค่าที่ k8s รัน mutating webhook เปลี่ยนเอง
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - '.webhooks[]?.clientConfig.caBundle'

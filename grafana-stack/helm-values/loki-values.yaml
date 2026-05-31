@@ -1,0 +1,138 @@
+# Loki values - single binary mode (เหมาะกับ homelab/small cluster)
+# ติดตั้ง: helm install loki grafana/loki -n monitoring -f loki-values.yaml
+#
+# *** จุดที่ต้องแก้ ***
+# - loki.storage.s3.endpoint: URL ของ SeaweedFS S3
+# - storageClassName: เปลี่ยนตามจริง
+
+loki:
+  # ปิด multi-tenancy สำหรับ homelab
+  auth_enabled: false
+
+  # commonConfig
+  commonConfig:
+    replication_factor: 1
+
+  # Schema config — ใช้ TSDB index (ใหม่สุด, performance ดีกว่า boltdb)
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  # Storage — ใช้ SeaweedFS เป็น S3 backend
+  storage:
+    type: s3
+    bucketNames:
+      chunks: loki-chunks
+      ruler: loki-ruler
+      admin: loki-admin
+    s3:
+      endpoint: http://seaweedfs.truenas.lan:8333    # ← เปลี่ยน URL จริง
+      region: us-east-1                              # SeaweedFS ไม่สน แต่ต้องใส่
+      s3ForcePathStyle: true                         # จำเป็นสำหรับ SeaweedFS
+      insecure: true                                 # http (ถ้าใช้ https ตั้ง false)
+      # access key + secret มาจาก env var (ดู extraEnvFrom ข้างล่าง)
+
+  # Limits
+  limits_config:
+    retention_period: 720h    # 30 วัน (เก็บใน S3)
+    max_query_length: 721h
+    max_query_parallelism: 32
+    split_queries_by_interval: 15m
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+
+  # Compactor (สำคัญ — ทำ retention + dedup)
+  compactor:
+    retention_enabled: true
+    delete_request_store: s3
+
+  # Server config
+  server:
+    grpc_server_max_recv_msg_size: 8388608
+    grpc_server_max_send_msg_size: 8388608
+
+# ─────────────────────────────────────────────────────
+# Deployment mode — SingleBinary (เหมาะกับ small cluster)
+# ─────────────────────────────────────────────────────
+deploymentMode: SingleBinary
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+  persistence:
+    enabled: true
+    storageClass: nfs-truenas    # ← เปลี่ยน
+    size: 10Gi
+  # ใช้ secret ที่สร้างไว้ใน secrets.yaml
+  extraEnvFrom:
+    - secretRef:
+        name: loki-s3-credentials
+
+# ปิด component ของ scalable mode (เพราะใช้ singleBinary)
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# ─────────────────────────────────────────────────────
+# Gateway (nginx proxy หน้า Loki)
+# ─────────────────────────────────────────────────────
+gateway:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# ─────────────────────────────────────────────────────
+# Cache (ปิดเพื่อประหยัด RAM)
+# ─────────────────────────────────────────────────────
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+
+# ─────────────────────────────────────────────────────
+# Test pod (ปิด)
+# ─────────────────────────────────────────────────────
+test:
+  enabled: false
+lokiCanary:
+  enabled: false
+
+# ─────────────────────────────────────────────────────
+# Monitoring — สร้าง ServiceMonitor ให้ Loki เอง
+# ─────────────────────────────────────────────────────
+monitoring:
+  selfMonitoring:
+    enabled: false
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kps
+  dashboards:
+    enabled: false
+  rules:
+    enabled: false
+
+# MinIO ที่มากับ chart ปิด (เราใช้ SeaweedFS แทน)
+minio:
+  enabled: false

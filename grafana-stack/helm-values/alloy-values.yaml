@@ -1,0 +1,140 @@
+# Grafana Alloy values - DaemonSet เก็บ logs จากทุก node ส่งไป Loki
+# Alloy คือ replacement ของ Promtail (Promtail deprecated ตั้งแต่ปลายปี 2024)
+# ติดตั้ง: helm install alloy grafana/alloy -n monitoring -f alloy-values.yaml
+
+alloy:
+  # River configuration - ใช้ภาษาใหม่ของ Alloy
+  configMap:
+    create: true
+    content: |
+      // ─────────────────────────────────────────────
+      // Discover ทุก pod ใน cluster
+      // ─────────────────────────────────────────────
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // ─────────────────────────────────────────────
+      // Relabel: เก็บแค่ pods ที่อยู่ใน current node
+      // เพิ่ม labels ที่มีประโยชน์
+      // ─────────────────────────────────────────────
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        // Filter: เอาแค่ pod ที่อยู่ node เดียวกับ Alloy
+        rule {
+          source_labels = ["__meta_kubernetes_pod_node_name"]
+          target_label  = "__host__"
+        }
+
+        // Namespace
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        // Pod name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        // Container name
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        // App label (ถ้าใช้ recommended labels)
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+
+        // Path ของ log file
+        rule {
+          source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "__path__"
+          replacement   = "/var/log/pods/*$1/*.log"
+        }
+      }
+
+      // ─────────────────────────────────────────────
+      // อ่าน log files
+      // ─────────────────────────────────────────────
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.parse.receiver]
+      }
+
+      // ─────────────────────────────────────────────
+      // Process logs: detect format (json/logfmt) auto
+      // ─────────────────────────────────────────────
+      loki.process "parse" {
+        forward_to = [loki.write.default.receiver]
+
+        // ลอง parse JSON ถ้าเป็น JSON
+        stage.json {
+          expressions = {
+            level     = "level",
+            msg       = "msg",
+            trace_id  = "trace_id",
+          }
+        }
+
+        // ดึง level ออกมาเป็น label (cardinality ต่ำ ใช้ได้)
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+
+        // ลบ log ที่ verbose เกินไป (debug logs from k8s system)
+        stage.drop {
+          source     = "level"
+          expression = "(debug|DEBUG|trace|TRACE)"
+        }
+      }
+
+      // ─────────────────────────────────────────────
+      // ส่งไป Loki
+      // ─────────────────────────────────────────────
+      loki.write "default" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+        }
+        external_labels = {
+          cluster = "home-k8s",
+        }
+      }
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+  # mount logs จาก host
+  mounts:
+    varlog: true
+    dockercontainers: true
+
+# Deploy เป็น DaemonSet
+controller:
+  type: daemonset
+  # ถ้าอยากให้รันบนทุก node รวม master ด้วย เปิด tolerations
+  tolerations:
+    - effect: NoSchedule
+      operator: Exists
+
+# Service สำหรับให้ Prometheus scrape metrics ของ Alloy เอง
+service:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kps

@@ -1,0 +1,34 @@
+# Wave 0: namespace + secrets (จาก Vault ผ่าน External Secrets Operator)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
+    targetRevision: main
+    path: grafana-stack/manifests
+    directory:
+      recurse: false
+      include: '{namespace.yaml,external-secrets.yaml}'
+      # ↑ ใช้ external-secrets เพื่อดึง credential จาก Vault
+      # ถ้ายังไม่พร้อมใช้ Vault → เปลี่ยนเป็น 'secrets-static.yaml'
+      # แต่ไม่แนะนำ เพราะ commit secret ใน git ไม่ปลอดภัย
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

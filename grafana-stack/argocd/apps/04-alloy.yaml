@@ -1,0 +1,43 @@
+# Wave 3: Alloy (log collector, ขึ้นหลัง Loki พร้อม)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alloy
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: alloy
+      targetRevision: 0.10.1    # ← pin version
+      helm:
+        releaseName: alloy
+        valueFiles:
+          - $values/grafana-stack/helm-values/alloy-values.yaml
+
+    - repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

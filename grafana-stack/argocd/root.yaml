@@ -1,0 +1,37 @@
+# App of Apps root - bootstrap ตัวเดียวจบ
+# kubectl apply -f argocd/root.yaml
+#
+# Root app นี้ watch โฟลเดอร์ argocd/apps/ ใน git repo
+# ทุก Application file ที่ commit เข้าไป → ArgoCD สร้างเป็น Application อัตโนมัติ
+#
+# *** ต้องแก้ ***
+# - spec.source.repoURL: ชี้ไป git repo ของคุณ
+# - spec.source.targetRevision: branch (main / master / HEAD)
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lgtm-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
+    targetRevision: main                                          # ← เปลี่ยน branch ถ้าจำเป็น
+    path: grafana-stack/argocd/apps
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
