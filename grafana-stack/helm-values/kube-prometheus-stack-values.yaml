@@ -36,7 +36,7 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: nfs-truenas    # ← เปลี่ยนตาม storage class จริง
+          storageClassName: truenas-nfs-storage    # ← เปลี่ยนตาม storage class จริง
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -68,7 +68,7 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: nfs-truenas    # ← เปลี่ยน
+          storageClassName: truenas-nfs-storage    # ← เปลี่ยน
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -115,7 +115,7 @@ grafana:
   persistence:
     enabled: true
     type: pvc
-    storageClassName: nfs-truenas    # ← เปลี่ยน
+    storageClassName: truenas-nfs-storage    # ← เปลี่ยน
     accessModes: ["ReadWriteOnce"]
     size: 5Gi
 

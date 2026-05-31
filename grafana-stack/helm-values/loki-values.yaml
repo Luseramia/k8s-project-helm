@@ -74,7 +74,7 @@ singleBinary:
       memory: 2Gi
   persistence:
     enabled: true
-    storageClass: nfs-truenas    # ← เปลี่ยน
+    storageClass: truenas-nfs-storage    # ← เปลี่ยน
     size: 10Gi
   # ใช้ secret ที่สร้างไว้ใน secrets.yaml
   extraEnvFrom:
