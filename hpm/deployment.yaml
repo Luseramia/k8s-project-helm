@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: hpm
-          image: registry.registry.svc.cluster.local:5000/hpm:29
+          image: registry.registry.svc.cluster.local:5000/hpm:30
           imagePullPolicy: Always
           ports:
             - containerPort: 80
