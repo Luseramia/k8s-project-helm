@@ -55,7 +55,7 @@ spec:
     spec:
       containers:
         - name: pve-exporter
-          image: prompt/prometheus-pve-exporter:3.4.4    # ← pin version
+          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.4.4    # ← pin version
           ports:
             - name: http
               containerPort: 9221
