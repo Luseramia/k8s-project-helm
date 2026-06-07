@@ -18,7 +18,7 @@ spec:
     path: grafana-stack/manifests
     directory:
       recurse: false
-      include: 'servicemonitors.yaml'
+      include: '{servicemonitors.yaml,pve-exporter.yaml}'
 
   destination:
     server: https://kubernetes.default.svc

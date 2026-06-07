@@ -54,6 +54,26 @@ prometheus:
       cluster: home-k8s
       environment: production
 
+    # ── Proxmox VE ผ่าน pve-exporter (multi-target pattern) ──
+    # scrape pve-exporter:9221/pve?target=<proxmox-host>
+    # แก้ targets ให้เป็น IP/hostname ของ Proxmox node จริง (ใส่ได้หลายตัวถ้าเป็น cluster)
+    additionalScrapeConfigs:
+      - job_name: proxmox
+        metrics_path: /pve
+        params:
+          module: ['default']
+        static_configs:
+          - targets:
+              - 192.168.1.49    # ← IP ของ Proxmox host (เพิ่มได้หลายบรรทัดถ้ามีหลาย node)
+        relabel_configs:
+          # target = proxmox host, แต่ยิงจริงไปที่ pve-exporter
+          - source_labels: [__address__]
+            target_label: __param_target
+          - source_labels: [__param_target]
+            target_label: instance
+          - target_label: __address__
+            replacement: pve-exporter.monitoring.svc.cluster.local:9221
+
 # ─────────────────────────────────────────────────────
 # Alertmanager
 # ─────────────────────────────────────────────────────

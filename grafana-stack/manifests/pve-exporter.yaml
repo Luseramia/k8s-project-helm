@@ -1,0 +1,89 @@
+# prometheus-pve-exporter — สะพานดึง metrics จาก Proxmox VE API เข้า Prometheus
+# Proxmox อยู่นอก cluster → exporter ตัวนี้รันในคลัสเตอร์แล้วคุยกับ PVE API :8006
+#
+# ต้องมีก่อน:
+# 1. API token ใน Proxmox (role PVEAuditor)
+# 2. เก็บ token ใน Vault: vault kv put observability/proxmox user=... token_name=... token_value=...
+# 3. Prometheus scrape job (ดู additionalScrapeConfigs ใน kube-prometheus-stack-values.yaml)
+
+---
+# ดึง Proxmox API token จาก Vault
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: proxmox-pve-exporter
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: proxmox-pve-exporter
+    creationPolicy: Owner
+  data:
+    - secretKey: PVE_USER
+      remoteRef:
+        key: proxmox
+        property: user
+    - secretKey: PVE_TOKEN_NAME
+      remoteRef:
+        key: proxmox
+        property: token_name
+    - secretKey: PVE_TOKEN_VALUE
+      remoteRef:
+        key: proxmox
+        property: token_value
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-exporter
+    spec:
+      containers:
+        - name: pve-exporter
+          image: prompt/prometheus-pve-exporter:3.4.4    # ← pin version
+          ports:
+            - name: http
+              containerPort: 9221
+          env:
+            - name: PVE_VERIFY_SSL
+              value: "false"    # Proxmox ใช้ self-signed cert → ปิด verify
+          envFrom:
+            - secretRef:
+                name: proxmox-pve-exporter    # PVE_USER / PVE_TOKEN_NAME / PVE_TOKEN_VALUE
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: pve-exporter
+  ports:
+    - name: http
+      port: 9221
+      targetPort: 9221
