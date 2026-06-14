@@ -55,7 +55,7 @@ spec:
     spec:
       containers:
         - name: pve-exporter
-          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.4.4    # ← pin version
+          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.9.0    # ← pin version จริงหลังรู้ tag ที่มี
           ports:
             - name: http
               containerPort: 9221
