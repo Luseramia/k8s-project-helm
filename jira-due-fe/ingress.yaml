@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jira-due-ingress
+  namespace: jira-due
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: jira-due-ingress-tls
+      hosts:
+        - jira-due.tarchunk.win
+  rules:
+    - host: jira-due.tarchunk.win
+      http:
+        paths:
+          # host เดียวพอ — /api ให้ nginx ใน frontend pod proxy ไป backend service เอง
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jira-due-frontend
+                port:
+                  number: 80

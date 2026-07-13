@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jira-due-backend-config
+  namespace: jira-due
+data:
+  PORT: "3000"
+  # Postgres ตัวเดิมนอก cluster (ตัวเดียวกับที่ n8n upsert อยู่แล้ว)
+  DB_HOST: "192.168.1.44"
+  DB_PORT: "5432"
+  DB_USERNAME: tarchunk
+  DB_NAME: jira_issues
+  CORS_ORIGIN: https://jira-due.tarchunk.win
+  TZ: Asia/Bangkok

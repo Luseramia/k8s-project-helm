@@ -1,0 +1,30 @@
+# ArgoCD Application ของ jira-due backend — apply ครั้งเดียว:
+#   kubectl apply -f jira-due-be/argocd-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jira-due-be
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/Luseramia/k8s-project-helm.git
+    targetRevision: main
+    path: jira-due-be
+    directory:
+      recurse: false
+      exclude: "argocd-app.yaml" # ไม่ให้ app จัดการไฟล์ตัวเอง
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jira-due
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

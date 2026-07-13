@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jira-due-backend
+  namespace: jira-due
+  labels:
+    app: jira-due-backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: jira-due-backend
+  template:
+    metadata:
+      labels:
+        app: jira-due-backend
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"
+    spec:
+      serviceAccountName: jira-due-backend
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: jira-due-backend
+          image: registry.registry.svc.cluster.local:5000/jira-due-backend:1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: jira-due-backend-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jira-due-secrets
+                  key: DB_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /api/issues/summary
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "300m"
+      restartPolicy: Always
