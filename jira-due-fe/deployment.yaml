@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: jira-due-frontend
-          image: registry.registry.svc.cluster.local:5000/jira-due-frontend:4
+          image: registry.registry.svc.cluster.local:5000/jira-due-frontend:6
           imagePullPolicy: Always
           ports:
             - containerPort: 80
