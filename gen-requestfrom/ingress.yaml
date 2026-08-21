@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gen-requestfrom-ingress
+  namespace: infra
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    acme.cert-manager.io/http01-ingress-class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-dns01"
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: gen-requestfrom-ingress-tls
+      hosts:
+        - gen-requestfrom.tarchunk.win
+  rules:
+    - host: gen-requestfrom.tarchunk.win
+      http:
+        paths:
+          # host เดียวพอ — /api ให้ nginx ใน frontend pod proxy ไป backend service เอง
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gen-requestfrom-frontend
+                port:
+                  number: 80
