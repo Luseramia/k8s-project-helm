@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: gen-requestfrom-frontend
-          image: registry.registry.svc.cluster.local:5000/gen-requestfrom-frontend:1
+          image: registry.registry.svc.cluster.local:5000/gen-requestfrom-frontend:3
           imagePullPolicy: Always
           ports:
             - containerPort: 80
