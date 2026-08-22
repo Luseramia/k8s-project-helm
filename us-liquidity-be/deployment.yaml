@@ -41,11 +41,6 @@ spec:
                 secretKeyRef:
                   name: us-liquidity-secrets
                   key: DB_PASSWORD
-            - name: ADMIN_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: us-liquidity-secrets
-                  key: ADMIN_TOKEN
           readinessProbe:
             httpGet:
               path: /api/meta/health
