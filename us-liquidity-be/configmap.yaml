@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: us-liquidity-backend-config
+  namespace: us-liquidity
+data:
+  PORT: "3200"
+  # Postgres ตัวเดิมนอก cluster — db `macro` ตัวเดียวกับ macro-backtest
+  # (observations เป็นแหล่งความจริงเดียว ห้ามแยก db)
+  DB_HOST: "192.168.1.44"
+  DB_PORT: "5432"
+  DB_USERNAME: tarchunk
+  DB_NAME: macro
+  CORS_ORIGIN: https://us-liquidity.tarchunk.win
+  TZ: Asia/Bangkok
