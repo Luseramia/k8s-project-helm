@@ -1,7 +1,19 @@
 FROM node:22-bookworm
 
-# Build with the exact version verified in the existing Pod.
-ARG CODEX_VERSION
+# Pinned default for CI builders that do not supply build arguments.
+# Override with the exact version verified in the existing Pod when needed.
+ARG CODEX_VERSION=0.154.0
+
+# An omitted argument uses the default above; reject explicit empty overrides.
+RUN if [ -z "${CODEX_VERSION}" ]; then \
+        echo 'ERROR: CODEX_VERSION was explicitly set to empty. Omit --build-arg CODEX_VERSION to use the pinned default, or pass an exact version.' >&2; \
+        exit 1; \
+    fi \
+    && if [ "${CODEX_VERSION}" = "latest" ]; then \
+        echo 'ERROR: CODEX_VERSION must be the exact version verified in the existing Pod, not latest.' >&2; \
+        exit 1; \
+    fi \
+    && printf 'Building with Codex CLI %s\n' "${CODEX_VERSION}"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -23,9 +35,8 @@ RUN apt-get update \
        unzip \
        vim \
     && corepack enable \
-    && test -n "${CODEX_VERSION}" \
-    && test "${CODEX_VERSION}" != "latest" \
     && npm install -g "@openai/codex@${CODEX_VERSION}" \
+    && codex --version \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
 

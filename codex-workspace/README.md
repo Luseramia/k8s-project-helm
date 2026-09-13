@@ -7,11 +7,29 @@ Codex is available through ChatGPT plans, with usage limits depending on the pla
 ## 1. Build the image
 
 ```bash
-docker build --build-arg CODEX_VERSION=<verified-cli-version> -t ghcr.io/YOUR_ORG/codex-workspace:3 .
+docker build -t ghcr.io/YOUR_ORG/codex-workspace:3 .
 docker push ghcr.io/YOUR_ORG/codex-workspace:3
 ```
 
-Change `image.repository` in `values.yaml` to match your registry. `CODEX_VERSION` is required; use the exact version verified in the existing Pod. The chart's image tag and the Codex CLI version are separate values.
+Change `image.repository` in `values.yaml` to match your registry. The Dockerfile defaults to the published, pinned Codex CLI version `0.154.0`, so builds work without extra CI arguments. To preserve a different version verified in your existing Pod, add `--build-arg "CODEX_VERSION=<verified-cli-version>"`. The chart's image tag and the Codex CLI version are separate values.
+
+### Jenkins / Kaniko builds
+
+The existing pipeline can use the Dockerfile's pinned default without supplying `CODEX_VERSION`. Setting a Jenkins environment variable or Helm value alone does not override a Dockerfile `ARG`. To inspect the existing Pod's version, run `kubectl -n codex exec <pod-name> -c codex -- codex --version` and use only the version number from the output.
+
+Run this inside the Kaniko container from the `codex-workspace` directory, with `PUSH_IMAGE` set to the destination registry/repository:tag:
+
+```bash
+: "${PUSH_IMAGE:?Set PUSH_IMAGE to the complete registry/repository:tag}"
+/kaniko/executor \
+  --context "$PWD" \
+  --dockerfile "$PWD/Dockerfile" \
+  --destination "$PUSH_IMAGE"
+```
+
+To override the default, set `CODEX_VERSION` to the desired exact version and add `--build-arg "CODEX_VERSION=$CODEX_VERSION"` to the Kaniko command. Do not pass that flag with an empty value: an explicit empty value overrides the Dockerfile default. Omit the flag when no override is needed.
+
+If an older build exits with status 1 immediately after successful package installation and before npm output, a missing/empty `CODEX_VERSION` is a likely cause: the old Dockerfile used silent `test` commands after installing packages and had no default. The current Dockerfile supplies a pinned default, validates explicit overrides before package installation, and prints the selected version. Explicit empty values and `latest` still fail with a clear error.
 
 ## 2. Install
 
