@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/YOUR_ORG/codex-workspace
-  tag: latest
+  repository: registry.registry.svc.cluster.local:5000/codex-workspace
+  tag: "2"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
