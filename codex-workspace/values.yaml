@@ -2,10 +2,27 @@ replicaCount: 1
 
 image:
   repository: registry.registry.svc.cluster.local:5000/codex-workspace
-  tag: "2"
+  tag: "3"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
+
+gateway:
+  enabled: true
+  # Provision this Secret separately; never put its value in Helm values.
+  existingSecret: codex-gateway-auth
+  tokenKey: token
+  serviceName: codex-gateway
+  port: 8080
+  timeoutSeconds: 600
+  model: ""
+  workdir: /opt/codex-gateway/workspace
+  networkPolicy:
+    enabled: true
+    # Empty means the Helm release namespace. Set to the orchestrator namespace.
+    allowedNamespace: ""
+    podSelector:
+      app.kubernetes.io/name: ai-orchestrator
 
 codex:
   # Codex signs in with your ChatGPT account interactively.

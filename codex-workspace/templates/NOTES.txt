@@ -11,3 +11,16 @@ Codex workspace is installed.
 
 Codex state is persisted at {{ .Values.codex.state.mountPath }}.
 No OPENAI_API_KEY is required by this chart.
+
+{{ if .Values.gateway.enabled }}
+Gateway endpoint inside the cluster:
+  http://{{ .Values.gateway.serviceName }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.gateway.port }}
+
+For Windows/local development:
+  kubectl -n {{ .Release.Namespace }} port-forward --address 127.0.0.1 svc/{{ .Values.gateway.serviceName }} 18080:{{ .Values.gateway.port }}
+  CODEX_REMOTE_URL=http://127.0.0.1:18080
+
+Set CODEX_REMOTE_TOKEN from your separately provisioned gateway Secret.
+Readiness checks CLI login locally; upstream token revocation/quota failures can
+still cause generation errors. Health checks do not run model inference.
+{{ end }}

@@ -1,3 +1,6 @@
+{{- if and .Values.gateway.enabled (ne (int .Values.replicaCount) 1) }}
+{{- fail "The gateway requires replicaCount=1 because admission control and Codex authentication state are shared." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,6 +27,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      terminationGracePeriodSeconds: 30
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -35,8 +39,35 @@ spec:
         - name: codex
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.gateway.enabled }}
+          command: ["/usr/bin/tini", "--", "/opt/codex-gateway/venv/bin/python"]
+          args: ["-m", "uvicorn", "gateway.app:app", "--host", "0.0.0.0", "--port", {{ .Values.gateway.port | quote }}, "--workers", "1", "--timeout-graceful-shutdown", "15"]
+          ports:
+            - name: gateway
+              containerPort: {{ .Values.gateway.port }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: gateway
+            periodSeconds: 10
+            timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: gateway
+            periodSeconds: 10
+            timeoutSeconds: 7
+            failureThreshold: 2
+          {{- else }}
           command: ["bash", "-lc"]
           args: ["sleep infinity"]
+          {{- end }}
           stdin: true
           tty: true
           workingDir: {{ .Values.workspace.mountPath | quote }}
@@ -48,6 +79,21 @@ spec:
           env:
             - name: HOME
               value: {{ .Values.home.mountPath | quote }}
+            - name: CODEX_HOME
+              value: {{ .Values.codex.state.mountPath | quote }}
+            {{- if .Values.gateway.enabled }}
+            - name: CODEX_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "gateway.existingSecret must name an existing Secret" .Values.gateway.existingSecret }}
+                  key: {{ .Values.gateway.tokenKey }}
+            - name: CODEX_WORKDIR
+              value: {{ .Values.gateway.workdir | quote }}
+            - name: CODEX_TIMEOUT_SECONDS
+              value: {{ .Values.gateway.timeoutSeconds | quote }}
+            - name: CODEX_MODEL
+              value: {{ .Values.gateway.model | quote }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

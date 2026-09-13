@@ -1,0 +1,6 @@
+.git
+tests
+__pycache__
+**/__pycache__
+*.tgz
+.env*

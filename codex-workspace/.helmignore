@@ -3,3 +3,9 @@
 Dockerfile
 README.md
 *.tgz
+gateway/
+tests/
+.dockerignore
+__pycache__/
+scripts/
+.gitattributes

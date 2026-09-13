@@ -7,13 +7,15 @@ Codex is available through ChatGPT plans, with usage limits depending on the pla
 ## 1. Build the image
 
 ```bash
-docker build -t ghcr.io/YOUR_ORG/codex-workspace:latest .
-docker push ghcr.io/YOUR_ORG/codex-workspace:latest
+docker build --build-arg CODEX_VERSION=<verified-cli-version> -t ghcr.io/YOUR_ORG/codex-workspace:3 .
+docker push ghcr.io/YOUR_ORG/codex-workspace:3
 ```
 
-Change `image.repository` in `values.yaml` to match your registry.
+Change `image.repository` in `values.yaml` to match your registry. `CODEX_VERSION` is required; use the exact version verified in the existing Pod. The chart's image tag and the Codex CLI version are separate values.
 
 ## 2. Install
+
+Gateway mode is enabled by default. Create its authentication Secret first using the instructions below, or set `--set gateway.enabled=false` for the original interactive-only workspace. Gateway readiness stays false until Codex is logged in; use `kubectl exec` to complete the login.
 
 ```bash
 helm upgrade --install codex ./codex-workspace \
@@ -118,3 +120,103 @@ helm upgrade --install codex ./codex-workspace \
 4. Enter the Pod and sign in to ChatGPT once.
 
 You may delete the old API-key Secret separately after confirming no other workloads use it.
+
+## HTTP gateway
+
+The image includes a FastAPI gateway running as the existing `node` user. Each authenticated request starts a new `codex exec --ephemeral` process, passes the prompt through stdin, and reads only the final-message file. The server fixes the sandbox to `read-only` and approval policy to `never`. Clients cannot supply commands, paths, models, or CLI flags. The default working directory is `/opt/codex-gateway/workspace`, separate from the interactive repositories in `/workspace`.
+
+`HOME` and `CODEX_HOME` point at the existing PVC mounts, so Codex reuses the server's saved login. The gateway bearer token is unrelated to OpenAI authentication and is excluded from the Codex subprocess environment. Do not run multiple gateway workers or replicas: admission control is in memory, and the existing login/workspace volumes are shared.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /health` | Process liveness; no inference or login call |
+| `GET /ready` | Runs `codex login status`, cached for five seconds; 200 or 503 |
+| `POST /v1/generate` | Requires `Authorization: Bearer <gateway-token>` |
+
+Request: `{"requestId":"unique-per-call","prompt":"..."}`
+
+Success: `{"requestId":"unique-per-call","output":"final assistant message"}`
+
+Requests are limited to 1 MiB, including JSON overhead. Final output is limited to 2 MiB. One request executes at a time; excess requests receive 429 before inference begins. Invalid authentication returns 401, malformed input 422, unavailable CLI/login 503, execution failure 502, and execution timeout 504. Responses and logs exclude prompts, CLI stderr, and tokens. A disconnected client cancels execution and stops the process tree before another request can run.
+
+Readiness checks local login state; revoked upstream credentials and account quota can still fail during inference. `/ready` must not be used as proof that the account has remaining quota. No durable queue, result storage, idempotency, or automatic generation retry is provided. If the connection drops after a request is sent, its outcome can be unknown.
+
+### Provision the gateway token
+
+Run in a trusted Linux terminal with the correct kubectl context. This creates a 64-character token without printing it or putting it in Helm values:
+
+```bash
+umask 077
+TOKEN_FILE=$(mktemp)
+openssl rand -hex 32 | tr -d '\n' > "$TOKEN_FILE"
+kubectl -n codex create secret generic codex-gateway-auth --from-file=token="$TOKEN_FILE"
+rm -f -- "$TOKEN_FILE"
+```
+
+If the Secret already exists, reuse it. The gateway requires an ASCII token of at least 32 characters without whitespace. When rotating it, update both the server and client and restart their Pods; Secret environment variables are read on process startup. Never commit the token or the saved Codex auth files.
+
+### Upgrade the existing release
+
+`scripts/deploy-gateway.sh` performs login/version/flag checks on the existing Pod, builds and pushes the image with that exact Codex version, creates the gateway Secret only if absent, and upgrades the existing release with automatic rollback on failure. It preserves user-supplied Helm values and the release's PVC names. Run it on a Linux host with authenticated kubectl, Helm 3, Docker, and registry access:
+
+```bash
+export NAMESPACE=codex
+export RELEASE=codex
+export ORCHESTRATOR_NAMESPACE=infra  # Set the actual orchestrator namespace.
+export IMAGE_TAG=3
+export PUSH_IMAGE=YOUR_REACHABLE_REGISTRY/codex-workspace:3
+export PULL_REPOSITORY=registry.registry.svc.cluster.local:5000/codex-workspace
+bash scripts/deploy-gateway.sh
+```
+
+The push and pull names must point to the **same registry/repository**. Kubernetes Service DNS often resolves inside Pods only; Docker on the build host may need a different address or a registry port-forward. Authenticate to that registry before running the script. An old Codex version missing required flags fails preflight; select and validate a compatible version before upgrading it separately.
+
+For a manual Helm upgrade, supply `helm get values` output as a values file so new chart defaults are merged. Avoid `--reuse-values` when upgrading from the older chart that lacks `gateway.*` values. Review any saved values privately because they may include existing environment settings.
+
+### Connect the orchestrator inside Kubernetes
+
+The default endpoint is `http://codex-gateway.codex.svc.cluster.local:8080`. Set `gateway.networkPolicy.allowedNamespace` to the orchestrator's namespace; it defaults to the Codex release namespace. The orchestrator Pod must have the label `app.kubernetes.io/name: ai-orchestrator`. The NetworkPolicy allows ingress on the gateway port from Pods matching both that namespace and label. Enforcement requires a CNI that implements NetworkPolicy; it does not encrypt traffic. No egress restriction is added, so Codex can reach its upstream service.
+
+Add these fields to the orchestrator Deployment, with the gateway token provisioned in **the orchestrator's namespace** as well. A `secretKeyRef` cannot reference a different namespace:
+
+```yaml
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-orchestrator
+    spec:
+      containers:
+        - name: ai-orchestrator
+          env:
+            - name: LLM_PROVIDER
+              value: codex
+            - name: CODEX_TRANSPORT
+              value: http
+            - name: CODEX_REMOTE_URL
+              value: http://codex-gateway.codex.svc.cluster.local:8080
+            - name: CODEX_REMOTE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: codex-gateway-auth
+                  key: token
+            - name: CODEX_REMOTE_TIMEOUT_SECONDS
+              value: "630"
+```
+
+Configure the same token securely in both namespaces. Keep the gateway execution deadline at 600 seconds and the client deadline at 630 seconds, or increase them together. The SDLC workflow can perform a second request to repair invalid JSON; allow roughly 1260 seconds plus overhead at the orchestrator's caller/proxy, or configure shorter deadlines consistently.
+
+### Windows development and verification
+
+From the ai-orchestrator repository, use `scripts/dev-port-forward.ps1` and `scripts/configure-codex-dev.ps1`. Both support a local kubeconfig or `-SshHost tarchunk@192.168.1.51`, using the remote host's kubectl context. SSH authentication is completed in the user's terminal; passwords and private keys do not belong in the scripts.
+
+After deployment, check `/health` and `/ready` through port-forward, run the example `/generate` request in the orchestrator README, then test the same call from a labeled orchestrator Pod inside the cluster. During a planned restart, confirm that the PVC-backed login remains available; restart port-forward after the selected Pod terminates. Test rejected credentials and simultaneous requests as well. These live checks require a deployed image and valid server login.
+
+The local tests use a fake CLI for subprocess behavior and do not make model calls:
+
+```bash
+python -m pip install -r gateway/requirements.txt httpx
+python -m unittest discover -s tests -v
+helm lint .
+helm template codex . --namespace codex
+```
