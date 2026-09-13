@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-orchestrator
+  namespace: codex
+  labels:
+    app: ai-orchestrator
+    app.kubernetes.io/name: ai-orchestrator
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ai-orchestrator
+  template:
+    metadata:
+      labels:
+        app: ai-orchestrator
+        # Required by the existing Codex gateway NetworkPolicy.
+        app.kubernetes.io/name: ai-orchestrator
+      annotations:
+        consul.hashicorp.com/connect-inject: "false"
+    spec:
+      serviceAccountName: ai-orchestrator
+      automountServiceAccountToken: false
+      dnsPolicy: ClusterFirst
+      # Match Uvicorn's 1300-second grace period, allowing generation + repair.
+      terminationGracePeriodSeconds: 1320
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ai-orchestrator
+          # Jenkins replaces the tag after a successful image push.
+          image: registry.registry.svc.cluster.local:5000/ai-orchestrator:1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: ai-orchestrator-config
+          env:
+            - name: CODEX_REMOTE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: codex-gateway-auth
+                  key: token
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 128Mi

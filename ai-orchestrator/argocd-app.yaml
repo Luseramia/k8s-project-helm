@@ -1,0 +1,26 @@
+# Apply once from the k8s-project-helm repository after the first Jenkins build.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-orchestrator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Luseramia/k8s-project-helm.git
+    targetRevision: main
+    path: ai-orchestrator
+    directory:
+      recurse: false
+      exclude: argocd-app.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: codex
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

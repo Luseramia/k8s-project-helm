@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-orchestrator
+  namespace: codex
+  labels:
+    app.kubernetes.io/name: ai-orchestrator
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-orchestrator
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP

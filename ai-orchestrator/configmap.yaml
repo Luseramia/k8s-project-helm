@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-orchestrator-config
+  namespace: codex
+data:
+  TZ: Asia/Bangkok
+  LLM_PROVIDER: codex
+  CODEX_TRANSPORT: http
+  CODEX_REMOTE_URL: http://codex-gateway.codex.svc.cluster.local:8080
+  CODEX_TIMEOUT_SECONDS: "600"
+  CODEX_REMOTE_TIMEOUT_SECONDS: "630"
