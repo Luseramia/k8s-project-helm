@@ -15,6 +15,12 @@ Change `image.repository` in `values.yaml` to match your registry. The Dockerfil
 
 ### Jenkins / Kaniko builds
 
+The supplied `Jenkinsfile` is the complete pipeline for this chart. Use it as the Jenkins Pipeline script or set the SCM script path to `codex-workspace/Jenkinsfile`. It mounts the shared CI checkout at `/ci-workspace` in the helper, Kaniko, and kubectl containers. This keeps it separate from the image's `/workspace`, whose ownership the Dockerfile sets to the `node` user while Kaniko executes the build instructions.
+
+Both Git stages register only `/ci-workspace` as `safe.directory` before running repository commands. This handles differing container UIDs for the intentionally shared checkout. The setting is written to the ephemeral helper container's global Git config. The pipeline uses `HELM_DIR` for the values file as well as the build context.
+
+If updating the old inline pipeline temporarily, add `git config --global --add safe.directory /workspace` immediately after `cd /workspace` in the `Update Helm values in Git` stage, before `git rev-parse --show-toplevel`. The complete Jenkinsfile also moves the CI mount and all checkout paths to prevent the Dockerfile from changing checkout ownership.
+
 The existing pipeline can use the Dockerfile's pinned default without supplying `CODEX_VERSION`. Setting a Jenkins environment variable or Helm value alone does not override a Dockerfile `ARG`. To inspect the existing Pod's version, run `kubectl -n codex exec <pod-name> -c codex -- codex --version` and use only the version number from the output.
 
 Run this inside the Kaniko container from the `codex-workspace` directory, with `PUSH_IMAGE` set to the destination registry/repository:tag:

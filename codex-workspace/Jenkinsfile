@@ -1,0 +1,385 @@
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "kaniko"
+spec:
+  serviceAccountName: kaniko
+
+  containers:
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:debug
+      command: ["sleep"]
+      args: ["99d"]
+      tty: true
+      volumeMounts:
+        - name: workspace
+          mountPath: /ci-workspace
+        - name: docker-config
+          mountPath: /kaniko/.docker
+
+    - name: helper
+      image: alpine/git:latest
+      command: ["sleep"]
+      args: ["99d"]
+      tty: true
+      volumeMounts:
+        - name: workspace
+          mountPath: /ci-workspace
+
+    - name: kubectl
+      image: alpine/k8s:1.32.9
+      command: ["sleep"]
+      args: ["99d"]
+      tty: true
+      volumeMounts:
+        - name: workspace
+          mountPath: /ci-workspace
+
+  volumes:
+    - name: workspace
+      emptyDir: {}
+    - name: docker-config
+      emptyDir: {}
+"""
+        }
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timestamps()
+    }
+
+    environment {
+        // เปลี่ยนเป็น repo ที่เก็บ Helm chart ของ Codex
+        GIT_REPO   = "git@github.com:Luseramia/k8s-project-helm.git"
+        GIT_BRANCH = "main"
+
+        // ถ้า Chart.yaml / values.yaml / Dockerfile อยู่ root repo ให้ใช้ "."
+        // ถ้า repo มี folder codex-workspace/ ให้ใช้ "codex-workspace"
+        HELM_DIR = "codex-workspace"
+
+        REGISTRY   = "registry.registry.svc.cluster.local:5000"
+        IMAGE_NAME = "codex-workspace"
+        TAG        = "${BUILD_NUMBER}"
+
+        ARGOCD_SERVER = "https://argocd-server.argocd.svc.cluster.local"
+        ARGOCD_APP    = "codex-workspace"
+
+        N8N_WEBHOOK = "http://n8n.n8n.svc.cluster.local:443/webhook/jenkins-notify"
+    }
+
+    stages {
+        stage('Debug Pod Info') {
+            steps {
+                script {
+                    safeRun('Debug Pod Info') {
+                        container('helper') {
+                            sh '''
+                                echo "Running inside container: $(cat /etc/hostname)"
+                                echo "Workspace: /ci-workspace"
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Checkout') {
+            steps {
+                script {
+                    safeRun('Checkout') {
+                        withCredentials([sshUserPrivateKey(
+                            credentialsId: 'github_key',
+                            keyFileVariable: 'KEY'
+                        )]) {
+                            container('helper') {
+                                sh '''
+                                    set -eu
+
+                                    cd /ci-workspace
+                                    # This emptyDir checkout is shared by CI containers.
+                                    git config --global --add safe.directory /ci-workspace
+                                    find /ci-workspace -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+                                    mkdir -p ~/.ssh
+                                    chmod 700 ~/.ssh
+
+                                    cat > ~/.ssh/config << 'SSHCFG'
+Host github.com
+    Hostname ssh.github.com
+    Port 443
+    StrictHostKeyChecking yes
+SSHCFG
+
+                                    ssh-keyscan -p 443 ssh.github.com > ~/.ssh/known_hosts 2>/dev/null
+                                    chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+
+                                    export GIT_SSH_COMMAND="ssh -i ${KEY}"
+
+                                    git clone \
+                                      --branch "${GIT_BRANCH}" \
+                                      --single-branch \
+                                      "${GIT_REPO}" \
+                                      .
+
+                                    echo "✅ Repository cloned"
+                                    git rev-parse --short HEAD
+                                    ls -la /ci-workspace
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Validate Codex Helm') {
+            steps {
+                script {
+                    safeRun('Validate Codex Helm') {
+                        container('helper') {
+                            sh '''
+                                set -eu
+
+                                CHART_DIR="/ci-workspace/${HELM_DIR}"
+
+                                echo "Checking chart at: ${CHART_DIR}"
+
+                                test -f "${CHART_DIR}/Chart.yaml"
+                                test -f "${CHART_DIR}/values.yaml"
+                                test -f "${CHART_DIR}/Dockerfile"
+                                test -f "${CHART_DIR}/templates/deployment.yaml"
+
+                                echo "✅ Codex Helm files found"
+                                echo "--- Chart.yaml ---"
+                                cat "${CHART_DIR}/Chart.yaml"
+
+                                echo "--- Current image config ---"
+                                sed -n '/^image:/,/^[^[:space:]]/p' "${CHART_DIR}/values.yaml"
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build & Push Codex Image') {
+            steps {
+                script {
+                    safeRun('Build & Push Codex Image') {
+                        container('kaniko') {
+                            sh '''
+                                set -eu
+
+                                CHART_DIR="/ci-workspace/${HELM_DIR}"
+
+                                echo "📁 Docker context: ${CHART_DIR}"
+                                echo "🐳 Building: ${REGISTRY}/${IMAGE_NAME}:${TAG}"
+
+                                /kaniko/executor \
+                                  --context="${CHART_DIR}" \
+                                  --dockerfile="${CHART_DIR}/Dockerfile" \
+                                  --destination="${REGISTRY}/${IMAGE_NAME}:${TAG}" \
+                                  --insecure \
+                                  --skip-tls-verify \
+                                  --cache=true
+
+                                echo "✅ Image pushed: ${REGISTRY}/${IMAGE_NAME}:${TAG}"
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Update Helm values in Git') {
+    steps {
+        script {
+            safeRun('Update Helm values in Git') {
+                withCredentials([sshUserPrivateKey(
+                    credentialsId: 'github_key',
+                    keyFileVariable: 'KEY'
+                )]) {
+                    container('helper') {
+                        sh '''
+                            set -eu
+
+                            cd /ci-workspace
+
+                            # Configure trust before rev-parse, status, or commit.
+                            git config --global --add safe.directory /ci-workspace
+
+                            echo "===== DEBUG GIT ====="
+                            pwd
+                            ls -la
+                            ls -la .git || true
+                            git rev-parse --show-toplevel
+
+                            VALUES_FILE="${HELM_DIR}/values.yaml"
+
+                            test -f "${VALUES_FILE}"
+
+                            echo "===== UPDATE IMAGE ====="
+
+                            sed -i -E \
+                              "/^image:/,/^[^[:space:]]/ {
+                                s|^  repository:.*|  repository: ${REGISTRY}/${IMAGE_NAME}|;
+                                s|^  tag:.*|  tag: \\"${TAG}\\"|;
+                              }" \
+                              "${VALUES_FILE}"
+
+                            echo "📦 New Helm image config:"
+                            sed -n '/^image:/,/^[^[:space:]]/p' "${VALUES_FILE}"
+
+                            echo "📄 Git status:"
+                            git status --short
+
+                            echo "📄 Git diff:"
+                            git diff -- "${VALUES_FILE}"
+
+                            git config user.email "jenkins@ci.local"
+                            git config user.name "Jenkins CI"
+
+                            git add "${VALUES_FILE}"
+
+                            if git diff --cached --quiet; then
+                                echo "ℹ️ No changes"
+                            else
+                                git commit -m "🚀 Deploy ${IMAGE_NAME}:${TAG} [skip ci]"
+
+                                export GIT_SSH_COMMAND="ssh -i ${KEY}"
+
+                                git push origin "${GIT_BRANCH}"
+
+                                echo "✅ Helm values pushed"
+                            fi
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
+
+        stage('Trigger Argo CD') {
+            steps {
+                script {
+                    safeRun('Trigger Argo CD') {
+                        withCredentials([string(
+                            credentialsId: 'argocd_token',
+                            variable: 'ARGOCD_TOKEN'
+                        )]) {
+                            container('helper') {
+                                sh '''
+                                    set -eu
+
+                                    command -v curl >/dev/null 2>&1 || \
+                                      apk add --no-cache curl >/dev/null
+
+                                    echo "🚀 Triggering Argo CD application: ${ARGOCD_APP}"
+
+                                    set +x
+                                    curl -fsSk -X POST \
+                                      -H "Authorization: Bearer ${ARGOCD_TOKEN}" \
+                                      -H "Content-Type: application/json" \
+                                      "${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP}/sync" \
+                                      -d '{}'
+                                    set -x
+
+                                    echo
+                                    echo "✅ Argo CD sync requested"
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                notifyN8n(
+                    stageName: 'Pipeline',
+                    status: 'success',
+                    message: "Codex Workspace build #${env.BUILD_NUMBER} สำเร็จ และอัปเดต image เป็น ${env.REGISTRY}/${env.IMAGE_NAME}:${env.TAG}"
+                )
+            }
+        }
+
+        failure {
+            script {
+                def failedStage  = env.FAILED_STAGE  ?: 'unknown'
+                def failedReason = env.FAILED_REASON ?: 'ดู log เพิ่มเติม'
+
+                notifyN8n(
+                    stageName: failedStage,
+                    status: 'failed',
+                    message: "Stage '${failedStage}' ล้มเหลว: ${failedReason}"
+                )
+            }
+        }
+    }
+}
+
+
+def safeRun(String stageName, Closure body) {
+    try {
+        body()
+    } catch (err) {
+        env.FAILED_STAGE  = stageName
+        env.FAILED_REASON = err.getMessage() ?: 'no message'
+        throw err
+    }
+}
+
+
+def notifyN8n(Map params) {
+    def stageName = params.stageName ?: 'unknown'
+    def status    = params.status ?: 'info'
+    def rawMsg    = params.message ?: ''
+
+    def message = rawMsg
+        .replace('\\', '\\\\')
+        .replace('"',  '\\"')
+        .replace('\n', '\\n')
+        .replace('\r', '\\r')
+        .replace('\t', '\\t')
+
+    if (message.length() > 1800) {
+        message = message.substring(0, 1800) + '...[truncated]'
+    }
+
+    def payload = """{
+  "job": "${env.JOB_NAME}",
+  "build": "${env.BUILD_NUMBER}",
+  "url": "${env.BUILD_URL}",
+  "stage": "${stageName}",
+  "status": "${status}",
+  "message": "${message}"
+}"""
+
+    container('helper') {
+        sh 'command -v curl >/dev/null 2>&1 || apk add --no-cache curl >/dev/null 2>&1 || true'
+
+        writeFile file: 'n8n-payload.json', text: payload
+
+        sh """
+            curl -s -X POST '${env.N8N_WEBHOOK}' \\
+                -H 'Content-Type: application/json' \\
+                --data @n8n-payload.json \\
+                -w '\\n📡 HTTP %{http_code}\\n' || \\
+                echo '⚠️ Webhook call failed (non-fatal)'
+
+            rm -f n8n-payload.json
+        """
+    }
+}
