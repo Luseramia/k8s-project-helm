@@ -1,0 +1,6 @@
+apiVersion: v2
+name: codex-workspace
+description: Persistent Kubernetes coding workspace with OpenAI Codex CLI and ChatGPT sign-in
+type: application
+version: 0.2.0
+appVersion: "latest"

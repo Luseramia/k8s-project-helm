@@ -1,0 +1,53 @@
+{{- if .Values.workspace.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "codex-workspace.fullname" . }}-workspace
+  labels:
+    {{- include "codex-workspace.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.workspace.persistence.accessModes | nindent 4 }}
+  {{- if .Values.workspace.persistence.storageClass }}
+  storageClassName: {{ .Values.workspace.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.workspace.persistence.size }}
+---
+{{- end }}
+{{- if .Values.home.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "codex-workspace.fullname" . }}-home
+  labels:
+    {{- include "codex-workspace.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.home.persistence.accessModes | nindent 4 }}
+  {{- if .Values.home.persistence.storageClass }}
+  storageClassName: {{ .Values.home.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.home.persistence.size }}
+---
+{{- end }}
+{{- if .Values.codex.state.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "codex-workspace.fullname" . }}-codex-state
+  labels:
+    {{- include "codex-workspace.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.codex.state.persistence.accessModes | nindent 4 }}
+  {{- if .Values.codex.state.persistence.storageClass }}
+  storageClassName: {{ .Values.codex.state.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.codex.state.persistence.size }}
+{{- end }}

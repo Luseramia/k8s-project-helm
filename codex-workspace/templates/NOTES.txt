@@ -1,0 +1,13 @@
+Codex workspace is installed.
+
+1. Find the Pod:
+   POD=$(kubectl -n {{ .Release.Namespace }} get pod -l app.kubernetes.io/instance={{ .Release.Name }} -o jsonpath='{.items[0].metadata.name}')
+
+2. Open a shell:
+   kubectl -n {{ .Release.Namespace }} exec -it "$POD" -- bash
+
+3. Sign in with your ChatGPT account and start Codex:
+   codex
+
+Codex state is persisted at {{ .Values.codex.state.mountPath }}.
+No OPENAI_API_KEY is required by this chart.

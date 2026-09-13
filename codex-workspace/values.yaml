@@ -1,0 +1,89 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/YOUR_ORG/codex-workspace
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+codex:
+  # Codex signs in with your ChatGPT account interactively.
+  # No OPENAI_API_KEY is required for this chart.
+  env:
+    TZ: Asia/Bangkok
+    TERM: xterm-256color
+    COLORTERM: truecolor
+    EDITOR: vim
+    VISUAL: vim
+    NODE_ENV: development
+    NPM_CONFIG_UPDATE_NOTIFIER: "false"
+    CI: "false"
+
+  # Persist Codex login/session and configuration separately from the rest of HOME.
+  state:
+    mountPath: /home/node/.codex
+    persistence:
+      enabled: true
+      size: 1Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+
+workspace:
+  mountPath: /workspace
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+home:
+  # Optional persistent HOME for shell history, npm cache, git config, etc.
+  # ~/.codex is persisted independently by codex.state above.
+  mountPath: /home/node
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+# Optional SSH secret for private Git repositories.
+# The secret can contain id_ed25519, id_rsa, known_hosts, config, etc.
+gitSsh:
+  enabled: false
+  existingSecret: codex-git-ssh
+  mountPath: /home/node/.ssh
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+podSecurityContext:
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}
+
+# Keep the Kubernetes service-account token out of the coding container by default.
+automountServiceAccountToken: false

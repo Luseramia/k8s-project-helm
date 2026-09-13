@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "codex-workspace.fullname" . }}
+  labels:
+    {{- include "codex-workspace.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # Recreate avoids multiple Pods competing for ReadWriteOnce PVCs during upgrades.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "codex-workspace.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        app.kubernetes.io/name: {{ include "codex-workspace.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: codex
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["bash", "-lc"]
+          args: ["sleep infinity"]
+          stdin: true
+          tty: true
+          workingDir: {{ .Values.workspace.mountPath | quote }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "codex-workspace.fullname" . }}-env
+          env:
+            - name: HOME
+              value: {{ .Values.home.mountPath | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: workspace
+              mountPath: {{ .Values.workspace.mountPath }}
+            - name: home
+              mountPath: {{ .Values.home.mountPath }}
+            - name: codex-state
+              mountPath: {{ .Values.codex.state.mountPath }}
+            {{- if .Values.gitSsh.enabled }}
+            - name: git-ssh
+              mountPath: {{ .Values.gitSsh.mountPath }}
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: workspace
+          {{- if .Values.workspace.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "codex-workspace.fullname" . }}-workspace
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: home
+          {{- if .Values.home.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "codex-workspace.fullname" . }}-home
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: codex-state
+          {{- if .Values.codex.state.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "codex-workspace.fullname" . }}-codex-state
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.gitSsh.enabled }}
+        - name: git-ssh
+          secret:
+            secretName: {{ .Values.gitSsh.existingSecret }}
+            defaultMode: 0400
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
