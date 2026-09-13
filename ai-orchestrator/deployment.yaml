@@ -40,7 +40,7 @@ spec:
       containers:
         - name: ai-orchestrator
           # Jenkins replaces the tag after a successful image push.
-          image: registry.registry.svc.cluster.local:5000/ai-orchestrator:1
+          image: registry.registry.svc.cluster.local:5000/ai-orchestrator:2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
