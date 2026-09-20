@@ -42,7 +42,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reconciler
-              image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:3
+              image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:15
               imagePullPolicy: IfNotPresent
               command: ["python", "-m", "app.reconcile"]
               env:
