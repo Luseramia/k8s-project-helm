@@ -1,0 +1,26 @@
+# Apply once: kubectl apply -f parallel-ai-test-orchestrator/argocd-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parallel-ai-test-orchestrator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Luseramia/k8s-project-helm.git
+    targetRevision: main
+    path: parallel-ai-test-orchestrator
+    directory:
+      recurse: false
+      exclude: argocd-app.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-test-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
