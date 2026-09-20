@@ -6,9 +6,11 @@ and is excluded from the application's source.
 
 ## Bootstrap
 
-1. Provision the runtime Secrets in `ai-test-system`. Do not commit their
-   values. Argo CD manages the non-secret `ai-test-repository-policies`
-   ConfigMap from `repository-policies-configmap.yaml`.
+1. Populate the `AI_TEST_*` fields documented in the application repository's
+   `docs/jenkins.md`. Jenkins renders and applies the runtime Secrets from
+   Vault; their values are never committed. Argo CD manages the non-secret
+   `ai-test-repository-policies` ConfigMap from
+   `repository-policies-configmap.yaml`.
 2. Confirm `truenas-nfs-storage` supports `ReadWriteMany`; the gateway and
    reconciler share the `ai-test-artifacts` PVC.
 3. Apply the Argo CD application:
