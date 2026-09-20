@@ -18,9 +18,31 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: ai-test-system
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: ai-test-gateway
+      namespace: ai-test-system
+      jsonPointers: ["/data"]
+    - group: ""
+      kind: Secret
+      name: ai-test-codex-callback
+      namespace: ai-test-runners
+      jsonPointers: ["/data"]
+    - group: ""
+      kind: Secret
+      name: ai-test-test-callback
+      namespace: ai-test-runners
+      jsonPointers: ["/data"]
+    - group: ""
+      kind: Secret
+      name: ai-test-codex-auth
+      namespace: ai-test-runners
+      jsonPointers: ["/data"]
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true

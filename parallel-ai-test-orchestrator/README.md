@@ -10,7 +10,10 @@ and is excluded from the application's source.
    `docs/jenkins.md`. Jenkins renders and applies the runtime Secrets from
    Vault; their values are never committed. Argo CD manages the non-secret
    `ai-test-repository-policies` ConfigMap from
-   `repository-policies-configmap.yaml`.
+   `repository-policies-configmap.yaml` and the namespaced Jenkins Secret RBAC
+   from `jenkins-secret-rbac.yaml`. It also creates the empty object shells in
+   `runtime-secrets.yaml` and ignores their `/data`, allowing Jenkins to update
+   only those four named Secrets without Secret-creation permission.
 2. Confirm `truenas-nfs-storage` supports `ReadWriteMany`; the gateway and
    reconciler share the `ai-test-artifacts` PVC.
 3. Apply the Argo CD application:
