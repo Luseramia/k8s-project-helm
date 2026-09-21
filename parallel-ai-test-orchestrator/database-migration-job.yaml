@@ -31,7 +31,7 @@ spec:
       containers:
         - name: migrate
           # Replaced by CI with the same immutable tag as the gateway.
-          image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:21
+          image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:23
           imagePullPolicy: IfNotPresent
           command: ["alembic", "upgrade", "head"]
           env:
