@@ -50,7 +50,7 @@ spec:
       containers:
         - name: gateway
           # Replaced by CI with an immutable build-number tag.
-          image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:19
+          image: registry.registry.svc.cluster.local:5000/parallel-ai-test-gateway:20
           imagePullPolicy: IfNotPresent
           command:
             ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080"]
@@ -70,9 +70,9 @@ spec:
             - name: REPOSITORY_POLICY_PATH
               value: /etc/ai-test/repository-policies.yaml
             - name: CODEX_RUNNER_IMAGE
-              value: registry.registry.svc.cluster.local:5000/parallel-ai-test-codex-runner:19
+              value: registry.registry.svc.cluster.local:5000/parallel-ai-test-codex-runner:20
             - name: TEST_RUNNER_IMAGE
-              value: registry.registry.svc.cluster.local:5000/parallel-ai-test-runner:19
+              value: registry.registry.svc.cluster.local:5000/parallel-ai-test-runner:20
             - name: CODEX_SECRET_NAME
               value: ai-test-codex-auth
             - name: CODEX_TOKEN_SECRET_NAME
