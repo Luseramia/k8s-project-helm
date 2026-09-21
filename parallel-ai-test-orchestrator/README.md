@@ -24,4 +24,7 @@ Application never treats itself as a child resource.
    ```
 
 Jenkins updates the immutable image tags in `gateway.yaml` and
-`reconciler-cronjob.yaml`. Argo CD automatically applies those commits.
+`database-migration-job.yaml` and `reconciler-cronjob.yaml`. During every sync,
+Argo CD runs `alembic upgrade head` at wave 1 before starting the gateway and
+reconciler at wave 2. The PostgreSQL database must already exist; the hook
+manages its schema.
