@@ -1,8 +1,9 @@
 # parallel-ai-test-orchestrator
 
 Kubernetes manifests for the parallel AI test orchestrator. Argo CD manages
-the root YAML files in this directory; `argocd-app.yaml` is applied only once
-and is excluded from the application's source.
+all root YAML files in this directory. The Application bootstrap manifest is
+kept outside this path at `argocd/parallel-ai-test-orchestrator.yaml`, so the
+Application never treats itself as a child resource.
 
 ## Bootstrap
 
@@ -17,7 +18,7 @@ and is excluded from the application's source.
 3. Apply the Argo CD application:
 
    ```console
-   kubectl apply -f parallel-ai-test-orchestrator/argocd-app.yaml
+   kubectl apply -f argocd/parallel-ai-test-orchestrator.yaml
    ```
 
 Jenkins updates the immutable image tags in `gateway.yaml` and
