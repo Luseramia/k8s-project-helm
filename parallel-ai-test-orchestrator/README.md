@@ -15,6 +15,8 @@ Application never treats itself as a child resource.
    Secret RBAC from `jenkins-secret-rbac.yaml`.
 2. Confirm `truenas-nfs-storage` supports `ReadWriteMany`; the gateway and
    reconciler share the `ai-test-artifacts` PVC.
+   PostgreSQL is the existing external service at `192.168.1.44:5432`; its
+   single-host egress allowance is defined in `network-policy.yaml`.
 3. Apply the Argo CD application:
 
    ```console
