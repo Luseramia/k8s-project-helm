@@ -5,7 +5,7 @@ Plain Kubernetes manifests, following the backend services in this repository. A
 ## Runtime
 
 - Namespace: `codex`; one replica.
-- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`).
+- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`, `POST /financial-statements/normalize`).
 - Image: `registry.registry.svc.cluster.local:5000/ai-orchestrator:<Jenkins build number>`.
 - Codex: `http://codex-gateway.codex.svc.cluster.local:8080` over HTTP.
 - Credential: the existing `codex-gateway-auth` Secret, key `token`, in `codex`.
@@ -43,6 +43,11 @@ kubectl -n codex exec deployment/ai-orchestrator -- python -c 'import asyncio; f
 ```
 
 Configure the backend/n8n caller to POST to `http://ai-orchestrator.codex.svc.cluster.local:8000/generate` with the documented application request body. Allow at least 1300 seconds for generation plus a possible JSON repair. Probes call the local API only (readiness every 15 seconds, liveness every 30 seconds); they do not invoke Codex. A healthy API does not by itself prove the remote model is available.
+
+The financial-statement endpoint uses the same internal ClusterIP and gateway
+credential. Callers do not need the gateway token. A backend running outside the
+cluster can port-forward this Service to `127.0.0.1:18000` and set
+`AI_ORCHESTRATOR_REST_URL=http://127.0.0.1:18000`.
 
 ## Changes and rollback
 
