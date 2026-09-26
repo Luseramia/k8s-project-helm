@@ -5,7 +5,7 @@ Plain Kubernetes manifests, following the backend services in this repository. A
 ## Runtime
 
 - Namespace: `codex`; one replica.
-- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`, `POST /financial-statements/normalize`).
+- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`, `POST /financial-statements/normalize`, `POST /financial-analysis/summarize`).
 - Image: `registry.registry.svc.cluster.local:5000/ai-orchestrator:<Jenkins build number>`.
 - Codex: `http://codex-gateway.codex.svc.cluster.local:8080` over HTTP.
 - Credential: the existing `codex-gateway-auth` Secret, key `token`, in `codex`.
