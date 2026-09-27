@@ -1,4 +1,4 @@
-# Apply once from the k8s-project-helm repository after the first Jenkins build.
+# Apply once from outside the ai-orchestrator application source path.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -14,7 +14,7 @@ spec:
     path: ai-orchestrator
     directory:
       recurse: false
-      exclude: argocd-app.yaml
+      include: '{configmap.yaml,deployment.yaml,service-account.yaml,service.yaml}'
   destination:
     server: https://kubernetes.default.svc
     namespace: codex

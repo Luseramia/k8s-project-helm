@@ -24,7 +24,7 @@ The container runs as UID/GID 10001 with a read-only root filesystem and writabl
    ```bash
    kubectl -n codex get secret codex-gateway-auth
    # Run from an up-to-date checkout of k8s-project-helm.
-   kubectl apply -f ai-orchestrator/argocd-app.yaml
+   kubectl apply -f argocd/ai-orchestrator.yaml
    ```
 
 5. Wait for Argo CD to sync, then verify the rollout and gateway connection:
@@ -51,7 +51,7 @@ cluster can port-forward this Service to `127.0.0.1:18000` and set
 
 ## Changes and rollback
 
-Jenkins updates the image only after tests and the image push succeed. Argo CD owns the application Deployment, Service, ConfigMap, and ServiceAccount; `argocd-app.yaml` is excluded from the application source so the application does not manage itself. The existing Codex Secret and workloads are not part of this application's resource set.
+Jenkins updates the image only after tests and the image push succeed. Argo CD owns the application Deployment, Service, ConfigMap, and ServiceAccount. The bootstrap Application manifest lives at `argocd/ai-orchestrator.yaml`, outside the application source path, and the directory source explicitly includes only those four runtime manifests so the application cannot manage itself. The existing Codex Secret and workloads are not part of this application's resource set.
 
 Revert the image-tag commit in Git to roll back; Argo CD self-heal would undo an out-of-band `kubectl set image` change. Configuration and Secret values are read at Pod startup. After changing those values without a new image, restart only this Deployment with `kubectl -n codex rollout restart deployment/ai-orchestrator`.
 
