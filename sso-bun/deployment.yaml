@@ -19,6 +19,7 @@ spec:
         app: sso-bun
       annotations:
         consul.hashicorp.com/connect-inject: "false"  # ปิด Consul injection
+        financial-analysis.tarchunk.win/config-revision: "1"
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/agent-inject-token: "true"
         # vault.hashicorp.com/agent-pre-populate-only: "true" # comment เพื่อเอา sidecar
