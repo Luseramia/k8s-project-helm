@@ -6,9 +6,6 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"  # เปลี่ยนเป็น HTTPS
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "1300"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "1300"
     acme.cert-manager.io/http01-ingress-class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-dns01"
 
