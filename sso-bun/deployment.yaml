@@ -30,7 +30,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
       - name: sso-bun
-        image: registry.registry.svc.cluster.local:5000/sso-bun:60
+        image: registry.registry.svc.cluster.local:5000/sso-bun:65
         imagePullPolicy: Always
         env:
         - name: SEAWEED_FS_SA
