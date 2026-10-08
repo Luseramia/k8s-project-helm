@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: us-liquidity-frontend
-          image: registry.registry.svc.cluster.local:5000/us-liquidity-frontend:3
+          image: registry.registry.svc.cluster.local:5000/us-liquidity-frontend:5
           imagePullPolicy: Always
           ports:
             - containerPort: 80
