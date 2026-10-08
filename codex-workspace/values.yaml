@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: registry.registry.svc.cluster.local:5000/codex-workspace
-  tag: "6"
+  tag: "7"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
