@@ -119,14 +119,14 @@ The dedicated Codex-state PVC intentionally contains authentication material. Tr
 
 ## Pod exec access
 
-The chart creates a dedicated ServiceAccount and namespaced Roles that let Codex list Pods and run `kubectl exec`. Access is enabled in the Helm release namespace by default. To reach Pods in other namespaces, list those existing namespaces in `values.yaml` before upgrading:
+The chart creates a dedicated ServiceAccount and namespaced Roles that let Codex list Pods and run `kubectl exec`. Access is enabled in the Helm release namespace and `default` by default. To reach Pods in other namespaces, add those existing namespaces to `targetNamespaces` in `values.yaml` before upgrading:
 
 ```yaml
 podExec:
   enabled: true
   targetNamespaces:
+    - default
     - infra
-    - n8n
 ```
 
 The Helm installer needs permission to create Roles and RoleBindings in every listed namespace. Build and push the updated image, then upgrade the release so the Pod receives the new ServiceAccount and `kubectl` binary. The gateway runs Codex with the `workspace-write` sandbox and command network access when `podExec.enabled` is true. It passes only the Kubernetes API discovery variables needed by `kubectl`; the Pod's ServiceAccount token is mounted by Kubernetes. Gateway clients still send only prompts and cannot select CLI flags or provide commands directly.
@@ -137,9 +137,9 @@ Check access from the new Codex Pod:
 
 ```bash
 kubectl version --client
-kubectl auth can-i create pods/exec -n infra
-kubectl -n infra get pods
-kubectl -n infra exec POD_NAME -c CONTAINER_NAME -- id
+kubectl auth can-i create pods/exec -n default
+kubectl -n default get pods
+kubectl -n default exec POD_NAME -c CONTAINER_NAME -- id
 ```
 
 `pods/exec` allows arbitrary commands inside permitted Pods. Kubernetes RBAC cannot limit the command, and a container's own filesystem permissions and ServiceAccount still apply. Grant access only to namespaces whose Pods you trust Codex to enter. Set `podExec.enabled: false` to restore the gateway's read-only Codex sandbox and omit the dedicated ServiceAccount and Roles.

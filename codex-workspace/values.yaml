@@ -28,8 +28,16 @@ gateway:
 # additional namespaces. Each target namespace must already exist.
 podExec:
   enabled: true
-  targetNamespaces: []
-
+  targetNamespaces:
+    - default
+    - infra
+    - n8n
+    - argocd
+    - infra
+    - jenkins
+    - us-liquidity
+    - web
+    - web-pubkey
 codex:
   # Codex signs in with your ChatGPT account interactively.
   # No OPENAI_API_KEY is required for this chart.
