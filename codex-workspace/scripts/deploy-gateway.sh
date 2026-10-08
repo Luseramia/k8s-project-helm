@@ -36,7 +36,11 @@ for flag in --ephemeral --output-last-message --sandbox --skip-git-repo-check; d
     fi
 done
 
-docker build --build-arg "CODEX_VERSION=$CODEX_VERSION" -t "$PUSH_IMAGE" "$CHART_DIR"
+BUILD_ARGS=(--build-arg "CODEX_VERSION=$CODEX_VERSION")
+if [[ -n "${KUBECTL_VERSION:-}" ]]; then
+    BUILD_ARGS+=(--build-arg "KUBECTL_VERSION=$KUBECTL_VERSION")
+fi
+docker build "${BUILD_ARGS[@]}" -t "$PUSH_IMAGE" "$CHART_DIR"
 docker push "$PUSH_IMAGE"
 
 umask 077

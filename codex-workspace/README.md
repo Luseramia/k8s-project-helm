@@ -11,7 +11,7 @@ docker build -t ghcr.io/YOUR_ORG/codex-workspace:3 .
 docker push ghcr.io/YOUR_ORG/codex-workspace:3
 ```
 
-Change `image.repository` in `values.yaml` to match your registry. The Dockerfile defaults to the published, pinned Codex CLI version `0.154.0`, so builds work without extra CI arguments. To preserve a different version verified in your existing Pod, add `--build-arg "CODEX_VERSION=<verified-cli-version>"`. The chart's image tag and the Codex CLI version are separate values.
+Change `image.repository` in `values.yaml` to match your registry. The Dockerfile defaults to the published, pinned Codex CLI version `0.154.0`, so builds work without extra CI arguments. To preserve a different version verified in your existing Pod, add `--build-arg "CODEX_VERSION=<verified-cli-version>"`. The chart's image tag and the Codex CLI version are separate values. The image also includes `kubectl`, pinned to `v1.32.9` to match the Jenkins kubectl container in this repository. If your API server uses another minor version, set `--build-arg "KUBECTL_VERSION=v<compatible-version>"`; `kubectl` must be within one minor version of the API server. `scripts/deploy-gateway.sh` accepts the same version through the `KUBECTL_VERSION` environment variable.
 
 ### Jenkins / Kaniko builds
 
@@ -117,12 +117,39 @@ The default chart creates three persistent areas:
 
 The dedicated Codex-state PVC intentionally contains authentication material. Treat it as sensitive data and do not share the same PVC between unrelated users.
 
+## Pod exec access
+
+The chart creates a dedicated ServiceAccount and namespaced Roles that let Codex list Pods and run `kubectl exec`. Access is enabled in the Helm release namespace by default. To reach Pods in other namespaces, list those existing namespaces in `values.yaml` before upgrading:
+
+```yaml
+podExec:
+  enabled: true
+  targetNamespaces:
+    - infra
+    - n8n
+```
+
+The Helm installer needs permission to create Roles and RoleBindings in every listed namespace. Build and push the updated image, then upgrade the release so the Pod receives the new ServiceAccount and `kubectl` binary. The gateway runs Codex with the `workspace-write` sandbox and command network access when `podExec.enabled` is true. It passes only the Kubernetes API discovery variables needed by `kubectl`; the Pod's ServiceAccount token is mounted by Kubernetes. Gateway clients still send only prompts and cannot select CLI flags or provide commands directly.
+
+For an interactive Codex session opened with `kubectl exec`, use `codex --sandbox workspace-write -c sandbox_workspace_write.network_access=true` to let its shell commands reach the Kubernetes API. The gateway sets these options automatically.
+
+Check access from the new Codex Pod:
+
+```bash
+kubectl version --client
+kubectl auth can-i create pods/exec -n infra
+kubectl -n infra get pods
+kubectl -n infra exec POD_NAME -c CONTAINER_NAME -- id
+```
+
+`pods/exec` allows arbitrary commands inside permitted Pods. Kubernetes RBAC cannot limit the command, and a container's own filesystem permissions and ServiceAccount still apply. Grant access only to namespaces whose Pods you trust Codex to enter. Set `podExec.enabled: false` to restore the gateway's read-only Codex sandbox and omit the dedicated ServiceAccount and Roles.
+
 ## Security defaults
 
 - Runs as non-root UID/GID 1000.
 - Drops Linux capabilities.
 - Disables privilege escalation.
-- Does not mount the Kubernetes service-account token by default.
+- Uses a dedicated Kubernetes ServiceAccount for Pod exec, with access scoped to the release namespace and any listed target namespaces.
 - Does not require or inject `OPENAI_API_KEY`.
 - Keeps Codex login/session state on a dedicated PVC.
 
@@ -147,7 +174,7 @@ You may delete the old API-key Secret separately after confirming no other workl
 
 ## HTTP gateway
 
-The image includes a FastAPI gateway running as the existing `node` user. Each authenticated request starts a new `codex exec --ephemeral` process, passes the prompt through stdin, and reads only the final-message file. The server fixes the sandbox to `read-only` and approval policy to `never`. Clients cannot supply commands, paths, models, or CLI flags. The default working directory is `/opt/codex-gateway/workspace`, separate from the interactive repositories in `/workspace`.
+The image includes a FastAPI gateway running as the existing `node` user. Each authenticated request starts a new `codex exec --ephemeral` process, passes the prompt through stdin, and reads only the final-message file. The server fixes approval policy to `never`; the sandbox is `workspace-write` with command network access when Pod exec is enabled and `read-only` otherwise. Clients cannot supply commands, paths, models, or CLI flags. The default working directory is `/opt/codex-gateway/workspace`, separate from the interactive repositories in `/workspace`.
 
 `HOME` and `CODEX_HOME` point at the existing PVC mounts, so Codex reuses the server's saved login. The gateway bearer token is unrelated to OpenAI authentication and is excluded from the Codex subprocess environment. Do not run multiple gateway workers or replicas: admission control is in memory, and the existing login/workspace volumes are shared.
 

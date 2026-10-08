@@ -28,7 +28,10 @@ spec:
         {{- end }}
     spec:
       terminationGracePeriodSeconds: 30
-      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- if .Values.podExec.enabled }}
+      serviceAccountName: {{ include "codex-workspace.podExecName" . }}
+      {{- end }}
+      automountServiceAccountToken: {{ or .Values.automountServiceAccountToken .Values.podExec.enabled }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.imagePullSecrets }}
@@ -81,6 +84,8 @@ spec:
               value: {{ .Values.home.mountPath | quote }}
             - name: CODEX_HOME
               value: {{ .Values.codex.state.mountPath | quote }}
+            - name: CODEX_POD_EXEC_ENABLED
+              value: {{ .Values.podExec.enabled | quote }}
             {{- if .Values.gateway.enabled }}
             - name: CODEX_GATEWAY_TOKEN
               valueFrom:

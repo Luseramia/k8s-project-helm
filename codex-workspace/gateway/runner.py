@@ -26,6 +26,7 @@ class RunnerSettings:
     model: str = ""
     timeout_seconds: int = 600
     max_output_bytes: int = 2 * 1024 * 1024
+    pod_exec_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> RunnerSettings:
@@ -35,15 +36,19 @@ class RunnerSettings:
         workdir = Path(os.getenv("CODEX_WORKDIR", "/opt/codex-gateway/workspace"))
         if not workdir.is_dir():
             raise ValueError("The configured Codex working directory must exist.")
+        pod_exec_setting = os.getenv("CODEX_POD_EXEC_ENABLED", "false").lower()
+        if pod_exec_setting not in ("true", "false"):
+            raise ValueError("CODEX_POD_EXEC_ENABLED must be true or false.")
         return cls(
             executable=os.getenv("CODEX_CLI_PATH", "codex"),
             workdir=workdir,
             model=os.getenv("CODEX_MODEL", "").strip(),
             timeout_seconds=timeout,
+            pod_exec_enabled=pod_exec_setting == "true",
         )
 
 
-def child_environment() -> dict[str, str]:
+def child_environment(*, pod_exec_enabled: bool = False) -> dict[str, str]:
     # The gateway bearer token and unrelated application credentials must never
     # be inherited by Codex or model-generated shell commands.
     allowed = {
@@ -54,6 +59,11 @@ def child_environment() -> dict[str, str]:
         "NO_PROXY", "http_proxy", "https_proxy", "no_proxy",
     }
     allowed_upper = {name.upper() for name in allowed}
+    if pod_exec_enabled:
+        allowed_upper.update({
+            "KUBERNETES_SERVICE_HOST", "KUBERNETES_SERVICE_PORT",
+            "KUBERNETES_SERVICE_PORT_HTTPS",
+        })
     return {key: value for key, value in os.environ.items() if key.upper() in allowed_upper}
 
 
@@ -96,7 +106,7 @@ class CodexRunner:
             self.settings.executable,
             *arguments,
             cwd=str(self.settings.workdir),
-            env=child_environment(),
+            env=child_environment(pod_exec_enabled=self.settings.pod_exec_enabled),
             stdin=stdin,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
@@ -127,9 +137,12 @@ class CodexRunner:
             output = Path(temporary) / "final.txt"
             arguments = [
                 "exec", "--ephemeral", "--skip-git-repo-check",
-                "--sandbox", "read-only", "-c", 'approval_policy="never"',
+                "--sandbox", "workspace-write" if self.settings.pod_exec_enabled else "read-only",
+                "-c", 'approval_policy="never"',
                 "--color", "never", "--output-last-message", str(output),
             ]
+            if self.settings.pod_exec_enabled:
+                arguments.extend(["-c", "sandbox_workspace_write.network_access=true"])
             if self.settings.model:
                 arguments.extend(["--model", self.settings.model])
             arguments.append("-")

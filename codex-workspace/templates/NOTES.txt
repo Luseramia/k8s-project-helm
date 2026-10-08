@@ -10,6 +10,15 @@ Codex workspace is installed.
    codex
 
 Codex state is persisted at {{ .Values.codex.state.mountPath }}.
+
+{{ if .Values.podExec.enabled }}
+Pod exec target namespaces:
+  - {{ .Release.Namespace }}
+{{- range .Values.podExec.targetNamespaces }}
+  - {{ . }}
+{{- end }}
+  kubectl auth can-i create pods/exec -n {{ .Release.Namespace }}
+{{- end }}
 No OPENAI_API_KEY is required by this chart.
 
 {{ if .Values.gateway.enabled }}
