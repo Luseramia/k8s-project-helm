@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-test-repository-policies
+  namespace: ai-test-system
+  labels:
+    app.kubernetes.io/part-of: parallel-ai-test-orchestrator
+data:
+  repository-policies.yaml: |
+    version: 1
+    repositories:
+      - id: github.com/Luseramia/ai-orchestrator
+        provider: github
+        clone_url: https://github.com/Luseramia/ai-orchestrator.git
+        allowed_branches:
+          - main
+        require_full_commit_sha: true
+
+        patch:
+          allowed_paths:
+            - tests/**/*.py
+            - tests/fixtures/**
+          denied_paths:
+            - app/**
+            - scripts/**
+            - Dockerfile
+            - Jenkinsfile
+            - requirements.txt
+            - requirements*.lock
+            - .env*
+            - .git/**
+          allow_new_files: true
+          allow_deletes: false
+          allow_renames: false
+          allow_binary: false
+          allow_symlinks: false
+          allow_submodules: false
+          allow_mode_changes: false
+          max_files: 40
+          max_bytes: 524288
+
+        commands:
+          install: python-pip-requirements-staging
+          unit: python-unittest-all
+          integration: python-unittest-gateway-integration
+
+        command_argv:
+          python-pip-requirements-staging:
+            - python
+            - -m
+            - pip
+            - install
+            - -r
+            - requirements.txt
+          python-unittest-all:
+            - python
+            - -m
+            - unittest
+            - discover
+            - -v
+          python-unittest-gateway-integration:
+            - python
+            - -m
+            - unittest
+            - discover
+            - -s
+            - tests
+            - -v
+
+        limits:
+          install_timeout_seconds: 300
+          unit_timeout_seconds: 300
+          integration_timeout_seconds: 600
+          total_timeout_seconds: 1200
+          max_log_bytes: 10485760
+
+        artifacts:
+          junit_globs:
+            - reports/junit/*.xml
+          coverage_globs:
+            - reports/coverage/**
+
+        notes:
+          - The repository currently uses pip plus unittest and has no lockfile.
+          - Production execution remains blocked until dependencies are pinned.

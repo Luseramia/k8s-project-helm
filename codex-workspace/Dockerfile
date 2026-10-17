@@ -3,6 +3,7 @@ FROM node:22-bookworm
 # Pinned default for CI builders that do not supply build arguments.
 # Override with the exact version verified in the existing Pod when needed.
 ARG CODEX_VERSION=0.154.0
+ARG KUBECTL_VERSION=v1.32.9
 
 # An omitted argument uses the default above; reject explicit empty overrides.
 RUN if [ -z "${CODEX_VERSION}" ]; then \
@@ -39,6 +40,18 @@ RUN apt-get update \
     && codex --version \
     && npm cache clean --force \
     && rm -rf /var/lib/apt/lists/*
+
+# Match KUBECTL_VERSION to the API server's minor version (within +/- one).
+RUN set -eu; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in amd64|arm64) ;; *) echo "Unsupported kubectl architecture: $arch" >&2; exit 1;; esac; \
+    url="https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${arch}/kubectl"; \
+    curl -fsSL "$url" -o /tmp/kubectl; \
+    curl -fsSL "${url}.sha256" -o /tmp/kubectl.sha256; \
+    printf '%s  %s\n' "$(cat /tmp/kubectl.sha256)" /tmp/kubectl | sha256sum --check; \
+    install -m 0755 /tmp/kubectl /usr/local/bin/kubectl; \
+    rm -f /tmp/kubectl /tmp/kubectl.sha256; \
+    kubectl version --client
 
 COPY gateway/requirements.txt /opt/codex-gateway/requirements.txt
 RUN python3 -m venv /opt/codex-gateway/venv \

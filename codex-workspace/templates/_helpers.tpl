@@ -16,3 +16,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 {{- end }}
+
+{{- define "codex-workspace.podExecName" -}}
+{{- printf "%s-exec" (include "codex-workspace.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}

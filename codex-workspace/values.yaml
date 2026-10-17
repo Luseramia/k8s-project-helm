@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: registry.registry.svc.cluster.local:5000/codex-workspace
-  tag: "6"
+  tag: "7"
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -24,6 +24,20 @@ gateway:
     podSelector:
       app.kubernetes.io/name: ai-orchestrator
 
+# Allow Codex to run kubectl exec in this release namespace and the listed
+# additional namespaces. Each target namespace must already exist.
+podExec:
+  enabled: true
+  targetNamespaces:
+    - default
+    - infra
+    - n8n
+    - argocd
+    - infra
+    - jenkins
+    - us-liquidity
+    - web
+    - web-pubkey
 codex:
   # Codex signs in with your ChatGPT account interactively.
   # No OPENAI_API_KEY is required for this chart.
@@ -102,5 +116,6 @@ affinity: {}
 podAnnotations: {}
 podLabels: {}
 
-# Keep the Kubernetes service-account token out of the coding container by default.
+# Retained for deployments that disable podExec. Enabling podExec mounts its
+# dedicated ServiceAccount token regardless of this setting.
 automountServiceAccountToken: false

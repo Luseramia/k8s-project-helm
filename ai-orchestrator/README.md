@@ -5,7 +5,7 @@ Plain Kubernetes manifests, following the backend services in this repository. A
 ## Runtime
 
 - Namespace: `codex`; one replica.
-- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`).
+- API: `http://ai-orchestrator.codex.svc.cluster.local:8000` (`GET /health`, `POST /generate`, `POST /financial-statements/normalize`, `POST /financial-analysis/summarize`).
 - Image: `registry.registry.svc.cluster.local:5000/ai-orchestrator:<Jenkins build number>`.
 - Codex: `http://codex-gateway.codex.svc.cluster.local:8080` over HTTP.
 - Credential: the existing `codex-gateway-auth` Secret, key `token`, in `codex`.
@@ -24,7 +24,7 @@ The container runs as UID/GID 10001 with a read-only root filesystem and writabl
    ```bash
    kubectl -n codex get secret codex-gateway-auth
    # Run from an up-to-date checkout of k8s-project-helm.
-   kubectl apply -f ai-orchestrator/argocd-app.yaml
+   kubectl apply -f argocd/ai-orchestrator.yaml
    ```
 
 5. Wait for Argo CD to sync, then verify the rollout and gateway connection:
@@ -44,9 +44,14 @@ kubectl -n codex exec deployment/ai-orchestrator -- python -c 'import asyncio; f
 
 Configure the backend/n8n caller to POST to `http://ai-orchestrator.codex.svc.cluster.local:8000/generate` with the documented application request body. Allow at least 1300 seconds for generation plus a possible JSON repair. Probes call the local API only (readiness every 15 seconds, liveness every 30 seconds); they do not invoke Codex. A healthy API does not by itself prove the remote model is available.
 
+The financial-statement endpoint uses the same internal ClusterIP and gateway
+credential. Callers do not need the gateway token. A backend running outside the
+cluster can port-forward this Service to `127.0.0.1:18000` and set
+`AI_ORCHESTRATOR_REST_URL=http://127.0.0.1:18000`.
+
 ## Changes and rollback
 
-Jenkins updates the image only after tests and the image push succeed. Argo CD owns the application Deployment, Service, ConfigMap, and ServiceAccount; `argocd-app.yaml` is excluded from the application source so the application does not manage itself. The existing Codex Secret and workloads are not part of this application's resource set.
+Jenkins updates the image only after tests and the image push succeed. Argo CD owns the application Deployment, Service, ConfigMap, and ServiceAccount. The bootstrap Application manifest lives at `argocd/ai-orchestrator.yaml`, outside the application source path, and the directory source explicitly includes only those four runtime manifests so the application cannot manage itself. The existing Codex Secret and workloads are not part of this application's resource set.
 
 Revert the image-tag commit in Git to roll back; Argo CD self-heal would undo an out-of-band `kubectl set image` change. Configuration and Secret values are read at Pod startup. After changing those values without a new image, restart only this Deployment with `kubectl -n codex rollout restart deployment/ai-orchestrator`.
 

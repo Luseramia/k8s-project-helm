@@ -184,10 +184,17 @@ if args == ["login", "status"]:
     sys.exit(1 if pathlib.Path("logged-out").exists() else 0)
 prompt = sys.stdin.buffer.read().decode("utf-8")
 assert args[0] == "exec" and "--ephemeral" in args
-assert args[args.index("--sandbox") + 1] == "read-only"
+sandbox = args[args.index("--sandbox") + 1]
+assert sandbox in ("read-only", "workspace-write")
 assert 'approval_policy="never"' in args
 assert "CODEX_GATEWAY_TOKEN" not in os.environ
 assert "CODEX_REMOTE_TOKEN" not in os.environ
+if sandbox == "workspace-write":
+    assert "sandbox_workspace_write.network_access=true" in args
+    assert os.environ["KUBERNETES_SERVICE_HOST"] == "10.0.0.1"
+    assert os.environ["KUBERNETES_SERVICE_PORT"] == "443"
+else:
+    assert "KUBERNETES_SERVICE_HOST" not in os.environ
 if prompt == "spawn":
     child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
     pathlib.Path("child.pid").write_text(str(child.pid))
@@ -233,6 +240,27 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
         (self.directory / "logged-out").touch()
         self.runner._ready_at = 0
         self.assertFalse(await self.runner.ready())
+
+    async def test_pod_exec_mode_allows_in_cluster_kubectl_environment(self):
+        enabled = CodexRunner(RunnerSettings(
+            executable="fake-codex", workdir=self.directory,
+            timeout_seconds=1, pod_exec_enabled=True,
+        ))
+        with patch.dict(os.environ, {
+            "KUBERNETES_SERVICE_HOST": "10.0.0.1",
+            "KUBERNETES_SERVICE_PORT": "443",
+            "CODEX_GATEWAY_TOKEN": TOKEN,
+        }):
+            self.assertEqual(await enabled.run("cluster"), "cluster")
+
+    def test_cluster_environment_is_not_inherited_when_disabled(self):
+        with patch.dict(os.environ, {
+            "KUBERNETES_SERVICE_HOST": "10.0.0.1",
+            "KUBERNETES_SERVICE_PORT": "443",
+            "CODEX_GATEWAY_TOKEN": TOKEN,
+        }):
+            self.assertNotIn("KUBERNETES_SERVICE_HOST", child_environment())
+            self.assertNotIn("CODEX_GATEWAY_TOKEN", child_environment(pod_exec_enabled=True))
 
     async def test_process_timeout_kills_child(self):
         running = asyncio.create_task(self.runner.run("spawn"))

@@ -1,8 +1,9 @@
-# Apply once from the k8s-project-helm repository after the first Jenkins build.
+# Bootstrap manifest kept outside the directory managed by this Application.
+# This prevents the Application from treating itself as a child resource.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: ai-orchestrator
+  name: parallel-ai-test-orchestrator
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -11,13 +12,12 @@ spec:
   source:
     repoURL: https://github.com/Luseramia/k8s-project-helm.git
     targetRevision: main
-    path: ai-orchestrator
+    path: parallel-ai-test-orchestrator
     directory:
       recurse: false
-      exclude: argocd-app.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: codex
+    namespace: ai-test-system
   syncPolicy:
     automated:
       prune: true
