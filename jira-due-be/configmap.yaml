@@ -12,3 +12,7 @@ data:
   DB_NAME: jira_issues
   CORS_ORIGIN: https://jira-due.tarchunk.win
   TZ: Asia/Bangkok
+  # UAT verdict → Jira (jira-be docs/UAT-VERDICT-PLAN.md) — email/token อยู่ใน secret jira-due-secrets
+  JIRA_BASE_URL: https://sittidate-lueangon.atlassian.net
+  UAT_AUTO_FAIL: "true"               # false = เมลไม่ผ่านก็รอคนกด ไม่ย้ายเอง
+  UAT_AUTO_FAIL_MAX_AGE_HOURS: "24"   # เมลไม่ผ่านที่เก่ากว่านี้ไม่ย้ายเอง
