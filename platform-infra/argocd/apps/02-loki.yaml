@@ -18,7 +18,7 @@ spec:
       helm:
         releaseName: loki
         valueFiles:
-          - $values/grafana-stack/helm-values/loki-values.yaml
+          - $values/platform-infra/helm-values/loki-values.yaml
 
     - repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
       targetRevision: main

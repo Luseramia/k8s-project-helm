@@ -20,7 +20,7 @@ spec:
       helm:
         releaseName: kps
         valueFiles:
-          - $values/grafana-stack/helm-values/kube-prometheus-stack-values.yaml
+          - $values/platform-infra/helm-values/kube-prometheus-stack-values.yaml
 
     # Source 2: values file ใน git repo (multi-source pattern)
     - repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน

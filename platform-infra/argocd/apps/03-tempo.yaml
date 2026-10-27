@@ -18,7 +18,7 @@ spec:
       helm:
         releaseName: tempo
         valueFiles:
-          - $values/grafana-stack/helm-values/tempo-values.yaml
+          - $values/platform-infra/helm-values/tempo-values.yaml
 
     - repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
       targetRevision: main

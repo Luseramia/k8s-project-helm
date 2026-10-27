@@ -15,7 +15,7 @@ spec:
   source:
     repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
     targetRevision: main
-    path: grafana-stack/manifests
+    path: platform-infra/manifests
     directory:
       recurse: false
       include: '{servicemonitors.yaml,pve-exporter.yaml}'
