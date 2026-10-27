@@ -1,0 +1,27 @@
+
+controller:
+  admin:
+    username: admin
+
+  serviceType: NodePort
+
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+  installPlugins:
+    - kubernetes:latest
+    - workflow-aggregator:latest
+    - git:latest
+    - configuration-as-code:latest
+    - commons-lang3-api:latest
+    - credentials:latest
+
+persistence:
+  enabled: true
+  storageClass: truenas-nfs-storage
+  size: 10Gi

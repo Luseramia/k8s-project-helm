@@ -1,0 +1,32 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jenkins
+  namespace: argocd
+
+spec:
+  project: default
+
+  sources:
+    # Jenkins Helm Chart
+    - repoURL: https://charts.jenkins.io
+      chart: jenkins
+      targetRevision: "5.9.12"
+      helm:
+        releaseName: jenkins
+        valueFiles:
+          - $values/platform-infra/helm-values/jenkins-values.yaml
+
+    # Git repository containing Helm values
+    - repoURL: git@github.com:Luseramia/k8s-project-helm.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: jenkins
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
