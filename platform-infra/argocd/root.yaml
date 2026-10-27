@@ -21,7 +21,7 @@ spec:
   source:
     repoURL: https://github.com/Luseramia/k8s-project-helm.git    # ← เปลี่ยน
     targetRevision: main                                          # ← เปลี่ยน branch ถ้าจำเป็น
-    path: grafana-stack/argocd/apps
+    path: platform-infra/argocd/apps
     directory:
       recurse: true
 
