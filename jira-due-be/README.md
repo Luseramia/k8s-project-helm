@@ -25,6 +25,17 @@ docker push registry.registry.svc.cluster.local:5000/jira-due-backend:$TAG
 kubectl apply -f argocd-app.yaml
 ```
 
+### Jira API token (UAT verdict → Jira)
+
+jira-be ย้ายสถานะการ์ดเอง (เมล MOTO.OS ไม่ผ่าน → UAT Fail, ผ่าน → กดบนเว็บ) ใช้บัญชี Jira ที่มีสิทธิ์ transition โปรเจกต์ SE
+สร้าง token ที่ https://id.atlassian.com/manage-profile/security/api-tokens แล้วเติมเข้า secret เดิม:
+
+```bash
+kubectl patch secret jira-due-secrets -n jira-due --type merge -p \
+  "{\"stringData\":{\"JIRA_EMAIL\":\"<อีเมลบัญชี Jira>\",\"JIRA_API_TOKEN\":\"<token>\"}}"
+kubectl rollout restart deployment -n jira-due jira-due-backend
+```
+
 ออก version ใหม่: build/push tag ใหม่ → แก้เลข tag ใน `deployment.yaml` → commit → ArgoCD sync เอง
 
 > - Postgres ที่ 192.168.1.44 ต้องรับ connection จาก IP ของ pod/node ใน cluster

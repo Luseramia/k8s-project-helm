@@ -27,7 +27,7 @@ spec:
       dnsPolicy: ClusterFirst
       containers:
         - name: jira-due-backend
-          image: registry.registry.svc.cluster.local:5000/jira-due-backend:2
+          image: registry.registry.svc.cluster.local:5000/jira-due-backend:7
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -41,6 +41,19 @@ spec:
                 secretKeyRef:
                   name: jira-due-secrets
                   key: DB_PASSWORD
+            # optional — ไม่มีก็ start ได้ แค่ไม่ประมวลผล UAT verdict
+            - name: JIRA_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: jira-due-secrets
+                  key: JIRA_EMAIL
+                  optional: true
+            - name: JIRA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: jira-due-secrets
+                  key: JIRA_API_TOKEN
+                  optional: true
           readinessProbe:
             httpGet:
               path: /api/issues/summary
