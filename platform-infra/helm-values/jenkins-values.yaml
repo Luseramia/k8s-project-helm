@@ -23,5 +23,6 @@ controller:
 
 persistence:
   enabled: true
-  storageClass: truenas-nfs-storage
-  size: 10Gi
+  existingClaim: jenkins
+  # storageClass: truenas-nfs-storage
+  # size: 10Gi
