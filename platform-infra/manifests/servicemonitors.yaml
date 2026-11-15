@@ -230,6 +230,53 @@ spec:
       path: /metrics
       interval: 30s
 
+
+
+---
+# ─────────────────────────────────────────────────────
+# Proxmox VE Exporter
+# API Target: 192.168.1.49
+#
+# Exporter endpoint:
+# /pve?target=192.168.1.49&module=default&cluster=1&node=1
+#
+# Exporter Service:
+# pve-exporter.monitoring.svc:9221
+# ─────────────────────────────────────────────────────
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pve-exporter
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  namespaceSelector:
+    matchNames:
+      - monitoring
+
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+
+  endpoints:
+    - port: http
+      path: /pve
+      interval: 30s
+      scrapeTimeout: 10s
+      params:
+        target:
+          - "192.168.1.49"
+        module:
+          - default
+        cluster:
+          - "1"
+        node:
+          - "1"
+
+
+
+
 ---
 # ─────────────────────────────────────────────────────
 # Alertmanager: PrometheusRule ตัวอย่าง
