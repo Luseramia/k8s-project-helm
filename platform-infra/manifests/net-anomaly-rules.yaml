@@ -1,0 +1,244 @@
+# ─────────────────────────────────────────────────────────────
+# Traffic anomaly detection (L1: metric-based, no new agents)
+# ใช้ข้อมูลที่มีอยู่แล้ว: cAdvisor (kubelet), node-exporter,
+# CoreDNS, ingress-nginx
+# ─────────────────────────────────────────────────────────────
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: net-anomaly
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    # ── Recording rules: อัตรา bytes ต่อ pod / ns / node ──────
+    - name: net.anomaly.rates
+      interval: 30s
+      rules:
+        - record: net:pod:egress_bytes:rate5m
+          expr: |
+            sum by (namespace, pod) (
+              rate(container_network_transmit_bytes_total{interface=~"eth0|ens18", pod!=""}[5m])
+            )
+        - record: net:pod:ingress_bytes:rate5m
+          expr: |
+            sum by (namespace, pod) (
+              rate(container_network_receive_bytes_total{interface=~"eth0|ens18", pod!=""}[5m])
+            )
+        - record: net:ns:egress_bytes:rate5m
+          expr: sum by (namespace) (net:pod:egress_bytes:rate5m)
+        - record: net:ns:ingress_bytes:rate5m
+          expr: sum by (namespace) (net:pod:ingress_bytes:rate5m)
+        - record: net:node:egress_bytes:rate5m
+          expr: sum by (instance) (rate(node_network_transmit_bytes_total{device="ens18"}[5m]))
+        - record: net:node:ingress_bytes:rate5m
+          expr: sum by (instance) (rate(node_network_receive_bytes_total{device="ens18"}[5m]))
+
+    # ── Baseline: ค่าเฉลี่ยชั่วโมงเดียวกันเมื่อวาน ─────────────
+    # คำนวณจาก raw metric โดยตรง เพื่อให้มี baseline ตั้งแต่ชั่วโมงแรก
+    - name: net.anomaly.baseline
+      interval: 5m
+      rules:
+        - record: net:pod:egress_bytes:baseline_1d
+          expr: |
+            sum by (namespace, pod) (
+              avg_over_time(
+                (rate(container_network_transmit_bytes_total{interface=~"eth0|ens18", pod!=""}[5m]))[1h:5m] offset 1d
+              )
+            )
+        - record: net:pod:ingress_bytes:baseline_1d
+          expr: |
+            sum by (namespace, pod) (
+              avg_over_time(
+                (rate(container_network_receive_bytes_total{interface=~"eth0|ens18", pod!=""}[5m]))[1h:5m] offset 1d
+              )
+            )
+        - record: net:ns:egress_bytes:baseline_1d
+          expr: sum by (namespace) (net:pod:egress_bytes:baseline_1d)
+        - record: net:node:egress_bytes:baseline_1d
+          expr: |
+            sum by (instance) (
+              avg_over_time((rate(node_network_transmit_bytes_total{device="ens18"}[5m]))[1h:5m] offset 1d)
+            )
+
+    # ── Anomaly score = ปัจจุบัน / (baseline + 64KiB) ─────────
+    - name: net.anomaly.score
+      interval: 30s
+      rules:
+        - record: net:pod:egress_anomaly:ratio
+          expr: |
+            net:pod:egress_bytes:rate5m
+              / (net:pod:egress_bytes:baseline_1d + 65536)
+        - record: net:pod:ingress_anomaly:ratio
+          expr: |
+            net:pod:ingress_bytes:rate5m
+              / (net:pod:ingress_bytes:baseline_1d + 65536)
+        - record: net:ns:egress_anomaly:ratio
+          expr: |
+            net:ns:egress_bytes:rate5m
+              / (net:ns:egress_bytes:baseline_1d + 1048576)
+        - record: net:node:egress_anomaly:ratio
+          expr: |
+            net:node:egress_bytes:rate5m
+              / (net:node:egress_bytes:baseline_1d + 1048576)
+
+    # ── DNS / HTTP observability ──────────────────────────────
+    - name: net.anomaly.dns_http
+      interval: 30s
+      rules:
+        - record: net:dns:qps:rate5m
+          expr: sum(rate(coredns_dns_requests_total[5m]))
+        - record: net:dns:nxdomain_rate:5m
+          expr: sum(rate(coredns_dns_responses_total{rcode="NXDOMAIN"}[5m]))
+        - record: net:dns:nxdomain_ratio:5m
+          expr: |
+            sum(rate(coredns_dns_responses_total{rcode="NXDOMAIN"}[5m]))
+              / clamp_min(sum(rate(coredns_dns_responses_total[5m])), 1)
+        - record: net:ingress:req_rate:5m
+          expr: sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests[5m]))
+        - record: net:ingress:5xx_ratio:5m
+          expr: |
+            sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{status=~"5.."}[5m]))
+              / clamp_min(sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests[5m])), 0.001)
+        - record: net:ingress:4xx_ratio:5m
+          expr: |
+            sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests{status=~"4.."}[5m]))
+              / clamp_min(sum by (exported_namespace, ingress) (rate(nginx_ingress_controller_requests[5m])), 0.001)
+
+    # ── Alerts ───────────────────────────────────────────────
+    - name: net.anomaly.alerts
+      rules:
+        - alert: PodEgressAnomaly
+          expr: |
+            net:pod:egress_anomaly:ratio > 8
+              and net:pod:egress_bytes:rate5m > 1048576
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "pod {{ $labels.namespace }}/{{ $labels.pod }} ส่งข้อมูลออกผิดปกติ"
+            description: >-
+              egress {{ $value | printf "%.1f" }} เท่าของ baseline เมื่อวาน
+              ตรวจสอบว่า pod นี้ compromised หรือมี job ใหม่ที่ไม่ได้แจ้ง
+
+        - alert: PodEgressHighVolume
+          expr: net:pod:egress_bytes:rate5m > 20971520
+          for: 5m
+          labels:
+            severity: critical
+            category: network-anomaly
+          annotations:
+            summary: "pod {{ $labels.namespace }}/{{ $labels.pod }} egress > 20 MiB/s"
+            description: "อาจเป็นการ exfiltrate ข้อมูล หรือ traffic loop ภายใน ตรวจสอบทันที"
+
+        - alert: PodIngressAnomaly
+          expr: |
+            net:pod:ingress_anomaly:ratio > 10
+              and net:pod:ingress_bytes:rate5m > 2097152
+          for: 15m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "pod {{ $labels.namespace }}/{{ $labels.pod }} รับ traffic ผิดปกติ"
+
+        - alert: NewPodHeavyEgress
+          expr: |
+            net:pod:egress_bytes:rate5m > 5242880
+              and on (namespace, pod)
+            (time() - kube_pod_start_time < 3600)
+          for: 5m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "pod ใหม่ {{ $labels.namespace }}/{{ $labels.pod }} ส่งออก > 5 MiB/s"
+            description: "pod อายุน้อยกว่า 1 ชม. แต่ส่งข้อมูลออกมาก — มักเป็น cryptominer/C2"
+
+        - alert: SensitiveNamespaceEgress
+          expr: |
+            sum by (namespace) (net:pod:egress_bytes:rate5m{namespace=~"vault|external-secrets|cert-manager"}) > 102400
+          for: 15m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "namespace {{ $labels.namespace }} ซึ่งไม่ควรมี egress มาก กำลังส่งข้อมูลออก"
+
+        - alert: DNSQuerySpike
+          expr: |
+            net:dns:qps:rate5m > 150
+              and net:dns:qps:rate5m > 5 * avg_over_time(net:dns:qps:rate5m[30m] offset 5m)
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "DNS query พุ่งสูงผิดปกติ ({{ $value | printf \"%.0f\" }} qps)"
+            description: "อาจเป็น DNS tunneling / DGA botnet / lookup storm"
+
+        - alert: DNSNXDomainBurst
+          expr: |
+            net:dns:nxdomain_rate:5m > 50
+              and net:dns:nxdomain_ratio:5m > 0.5
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "NXDOMAIN พุ่ง {{ $value | printf \"%.0f\" }}/s — สัญญาณ DGA หรือ typo-squatting lookup"
+
+        - alert: IngressRequestSpike
+          expr: net:ingress:req_rate:5m > 200
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "ingress {{ $labels.ingress }} รับ request > 200 rps"
+
+        - alert: IngressServerErrorSpike
+          expr: |
+            net:ingress:5xx_ratio:5m > 0.05
+              and net:ingress:req_rate:5m > 5
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "ingress {{ $labels.ingress }} 5xx {{ $value | printf \"%.1f%%\" }}"
+
+        - alert: IngressClientErrorScan
+          expr: |
+            net:ingress:4xx_ratio:5m > 0.5
+              and net:ingress:req_rate:5m > 20
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "ingress {{ $labels.ingress }} 4xx {{ $value | printf \"%.1f%%\" }} — อาจถูก scan"
+
+        - alert: ConntrackTablePressure
+          expr: |
+            sum by (instance) (node_nf_conntrack_entries) / sum by (instance) (node_nf_conntrack_entries_limit) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "conntrack table ของ {{ $labels.instance }} ใช้ > 80%"
+            description: "มักเกิดจาก port scan, connection flood หรือ NAT leak"
+
+        - alert: NodeNetworkThroughputSpike
+          expr: |
+            net:node:egress_bytes:rate5m > 41943040
+              and net:node:egress_anomaly:ratio > 3
+          for: 10m
+          labels:
+            severity: warning
+            category: network-anomaly
+          annotations:
+            summary: "node {{ $labels.instance }} ส่งข้อมูลออกผิดปกติ"

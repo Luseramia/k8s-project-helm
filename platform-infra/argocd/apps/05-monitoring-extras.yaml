@@ -18,7 +18,7 @@ spec:
     path: platform-infra/manifests
     directory:
       recurse: false
-      include: '{servicemonitors.yaml,pve-exporter.yaml}'
+      include: '{servicemonitors.yaml,pve-exporter.yaml,net-anomaly-rules.yaml,net-anomaly-dashboard.yaml,ingress-metrics-service.yaml}'
 
   destination:
     server: https://kubernetes.default.svc

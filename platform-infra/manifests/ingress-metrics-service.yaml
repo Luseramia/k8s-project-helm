@@ -1,0 +1,24 @@
+# ServiceMonitor `nginx-ingress` (ใน monitoring ns) เลือก Service ที่มี
+# label ชุดนี้และมี port ชื่อ `metrics` — แต่ Service ของ controller
+# ไม่ได้เปิด 10254 จึงไม่มี target ให้ scrape (metrics หายทั้งชุด)
+# Service นี้เปิด 10254 ให้ ServiceMonitor เก็บได้
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller-metrics
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  ports:
+    - name: metrics
+      port: 10254
+      targetPort: 10254
+      protocol: TCP
