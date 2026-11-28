@@ -447,7 +447,7 @@ data:
         {
           "id": 7,
           "type": "stat",
-          "title": "Tokens created",
+          "title": "Requests (total)",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -497,15 +497,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_token_creation{job=\"vault-active\"})",
-              "legendFormat": "tokens"
+              "expr": "sum(vault_core_handle_request_count{job=\"vault-active\"})",
+              "legendFormat": "requests"
             }
           ]
         },
         {
           "id": 8,
           "type": "stat",
-          "title": "Token cache hit ratio",
+          "title": "Token lookups/s",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -518,7 +518,7 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "percentunit",
+              "unit": "reqps",
               "color": {
                 "mode": "thresholds"
               },
@@ -556,15 +556,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_cache_hit{job=\"vault-active\"}) / clamp_min(max(vault_cache_hit{job=\"vault-active\"}) + max(vault_cache_miss{job=\"vault-active\"}), 1)",
-              "legendFormat": "hit ratio"
+              "expr": "sum(rate(vault_token_lookup_count{job=\"vault-active\"}[5m]))",
+              "legendFormat": "lookups/s"
             }
           ]
         },
         {
           "id": 9,
           "type": "stat",
-          "title": "Barrier ops/s",
+          "title": "Barrier reads/s",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -615,8 +615,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_barrier_get{job=\"vault-active\"}[5m])) + sum(rate(vault_barrier_put{job=\"vault-active\"}[5m]))",
-              "legendFormat": "ops/s"
+              "expr": "sum(rate(vault_barrier_get_count{job=\"vault-active\"}[5m]))",
+              "legendFormat": "reads/s"
             }
           ]
         },
@@ -744,7 +744,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_core_check_token{job=\"vault-active\"}[5m]))",
+              "expr": "sum(rate(vault_core_check_token_count{job=\"vault-active\"}[5m]))",
               "legendFormat": "check_token"
             }
           ]
@@ -995,15 +995,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_expire_register_auth{job=\"vault-active\"}[5m]))",
-              "legendFormat": "auth registrations/s"
+              "expr": "max(vault_expire_num_irrevocable_leases{job=\"vault-active\"})",
+              "legendFormat": "irrevocable"
             }
           ]
         },
         {
           "id": 16,
           "type": "timeseries",
-          "title": "Consul storage backend",
+          "title": "Consul storage ops (total)",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -1016,7 +1016,7 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
+              "unit": "short",
               "custom": {
                 "lineWidth": 2,
                 "fillOpacity": 8,
@@ -1053,8 +1053,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_get{job=\"vault-active\"}[5m]))",
-              "legendFormat": "get/s"
+              "expr": "sum(vault_consul_get_count{job=\"vault-active\"})",
+              "legendFormat": "get"
             },
             {
               "refId": "B",
@@ -1062,8 +1062,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_put{job=\"vault-active\"}[5m]))",
-              "legendFormat": "put/s"
+              "expr": "sum(vault_consul_put_count{job=\"vault-active\"})",
+              "legendFormat": "put"
             },
             {
               "refId": "C",
@@ -1071,8 +1071,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_delete{job=\"vault-active\"}[5m]))",
-              "legendFormat": "delete/s"
+              "expr": "sum(vault_consul_delete_count{job=\"vault-active\"})",
+              "legendFormat": "delete"
             }
           ]
         }
