@@ -206,7 +206,7 @@ data:
         {
           "id": 3,
           "type": "stat",
-          "title": "Version",
+          "title": "Mounts",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -245,7 +245,7 @@ data:
             },
             "colorMode": "background",
             "graphMode": "area",
-            "textMode": "name",
+            "textMode": "value",
             "justifyMode": "auto",
             "orientation": "auto"
           },
@@ -256,8 +256,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max by (version) (vault_build_info)",
-              "legendFormat": "{{version}}"
+              "expr": "max(vault_core_mount_table_num_entries{job=\"vault-active\"})",
+              "legendFormat": "mounts"
             }
           ]
         },
@@ -447,7 +447,7 @@ data:
         {
           "id": 7,
           "type": "stat",
-          "title": "Tokens",
+          "title": "Requests (total)",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -497,15 +497,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_token_count{job=\"vault-active\"})",
-              "legendFormat": "tokens"
+              "expr": "sum(vault_core_handle_request_count{job=\"vault-active\"})",
+              "legendFormat": "requests"
             }
           ]
         },
         {
           "id": 8,
           "type": "stat",
-          "title": "Entities",
+          "title": "Token lookups/s",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -518,7 +518,7 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
+              "unit": "reqps",
               "color": {
                 "mode": "thresholds"
               },
@@ -530,7 +530,8 @@ data:
                     "value": null
                   }
                 ]
-              }
+              },
+              "decimals": 2
             },
             "overrides": []
           },
@@ -555,15 +556,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_identity_entity_count{job=\"vault-active\"})",
-              "legendFormat": "entities"
+              "expr": "sum(rate(vault_token_lookup_count{job=\"vault-active\"}[5m]))",
+              "legendFormat": "lookups/s"
             }
           ]
         },
         {
           "id": 9,
           "type": "stat",
-          "title": "KV secrets",
+          "title": "Barrier reads/s",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -576,7 +577,7 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "short",
+              "unit": "ops",
               "color": {
                 "mode": "thresholds"
               },
@@ -588,7 +589,8 @@ data:
                     "value": null
                   }
                 ]
-              }
+              },
+              "decimals": 2
             },
             "overrides": []
           },
@@ -613,8 +615,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_secret_kv_count{job=\"vault-active\"})",
-              "legendFormat": "kv"
+              "expr": "sum(rate(vault_barrier_get_count{job=\"vault-active\"}[5m]))",
+              "legendFormat": "reads/s"
             }
           ]
         },
@@ -742,8 +744,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_core_handle_login_request{job=\"vault-active\"}[5m]))",
-              "legendFormat": "login"
+              "expr": "sum(rate(vault_core_check_token_count{job=\"vault-active\"}[5m]))",
+              "legendFormat": "check_token"
             }
           ]
         },
@@ -993,15 +995,15 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "max(vault_token_count{job=\"vault-active\"})",
-              "legendFormat": "tokens"
+              "expr": "max(vault_expire_num_irrevocable_leases{job=\"vault-active\"})",
+              "legendFormat": "irrevocable"
             }
           ]
         },
         {
           "id": 16,
           "type": "timeseries",
-          "title": "Consul storage backend",
+          "title": "Consul storage ops (total)",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -1014,7 +1016,7 @@ data:
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
+              "unit": "short",
               "custom": {
                 "lineWidth": 2,
                 "fillOpacity": 8,
@@ -1051,8 +1053,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_get{job=\"vault-active\"}[5m]))",
-              "legendFormat": "get/s"
+              "expr": "sum(vault_consul_get_count{job=\"vault-active\"})",
+              "legendFormat": "get"
             },
             {
               "refId": "B",
@@ -1060,8 +1062,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_put{job=\"vault-active\"}[5m]))",
-              "legendFormat": "put/s"
+              "expr": "sum(vault_consul_put_count{job=\"vault-active\"})",
+              "legendFormat": "put"
             },
             {
               "refId": "C",
@@ -1069,8 +1071,8 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(vault_consul_delete{job=\"vault-active\"}[5m]))",
-              "legendFormat": "delete/s"
+              "expr": "sum(vault_consul_delete_count{job=\"vault-active\"})",
+              "legendFormat": "delete"
             }
           ]
         }

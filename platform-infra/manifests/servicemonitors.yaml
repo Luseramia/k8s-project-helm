@@ -58,10 +58,13 @@ spec:
         format: ['prometheus']
       interval: 30s
       scheme: http
-      # ถ้าต้อง token authentication:
-      # bearerTokenSecret:
-      #   name: vault-metrics-token
-      #   key: token
+      # Vault ต้องมี token: policy `prometheus-metrics` = read บน sys/metrics
+      # secret สร้างด้วย: kubectl -n monitoring create secret generic vault-metrics-token --from-literal=token=...
+      authorization:
+        type: Bearer
+        credentials:
+          name: vault-metrics-token
+          key: token
 
 ---
 # ─────────────────────────────────────────────────────
